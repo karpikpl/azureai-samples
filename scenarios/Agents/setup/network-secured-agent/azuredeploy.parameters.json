@@ -52,6 +52,18 @@
       },
       "modelLocation": {
         "value": "westus2"
+      },
+      "existingVnetName": {
+        "value": ""
+      },
+      "existingVnetResourceGroup":{
+        "value": ""
+      },
+      "hubSubnetName": {
+        "value": ""
+      },
+      "agentsSubnetName": {
+        "value": ""
       }
     }
   }

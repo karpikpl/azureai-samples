@@ -1,3 +1,5 @@
+targetScope = 'subscription'
+
 /*
 Network-Secured Agent Architecture Overview
 -----------------------------------------
@@ -30,9 +32,11 @@ param name string = 'network-secured-agent'
 
 // Create a short, unique suffix, that will be unique to each resource group
 param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
-param uniqueSuffix string = substring(uniqueString('${resourceGroup().id}-${deploymentTimestamp}'), 0, 4)
+param uniqueSuffix string = substring(uniqueString('${subscription().id}-${deploymentTimestamp}'), 0, 4)
 
 /* ---------------------------------- Default Parameters if Overrides Not Set ---------------------------------- */
+param rgGroupName string = '${name}-rg'
+
 
 // Parameters
 @minLength(2)
@@ -71,7 +75,7 @@ param projectPublicNetworkAccess string = hubPublicNetworkAccess
 param defaultAiProjectDescription string = 'This is an example AI Project resource for use in Azure AI Studio.'
 
 @description('Resource group location')
-param resourceGroupLocation string = resourceGroup().location
+param resourceGroupLocation string = 'eastus2'
 
 @allowed([
   'australiaeast'
@@ -132,7 +136,17 @@ param aiServiceAccountName string = ''
 @description('The AI Search Service name. This is an optional field, and if not provided, the resource will be created.The resource should exist in same resource group must be Public Network Disabled')
 param aiSearchServiceName string = ''
 
+// VNET
+@description('If you provide this is will be used instead of creating a new VNET')
+param existingVnetName string = ''
+@description('The name of the resource group where the existing VNET is located')
+param existingVnetResourceGroup string = ''
+@description('The name of Agents Subnet')
+param agentsSubnetName string = ''
+@description('The name of Customer Hub subnet')
+param hubSubnetName string = ''
 
+var vnetResourceGroupName = !empty(existingVnetResourceGroup) ? existingVnetResourceGroup : rgGroupName
 
 // @description('The Ai Storage Account name. This is an optional field, and if not provided, the resource will be created.The resource should exist in same resource group')
 // param aiStorageAccountName string = ''
@@ -143,10 +157,14 @@ param aiSearchServiceName string = ''
 param userAssignedIdentityDefaultName string = 'secured-agents-identity-${uniqueSuffix}'
 var uaiName = (userAssignedIdentityOverride == '') ? userAssignedIdentityDefaultName : userAssignedIdentityOverride
 
-
+resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
+  name: rgGroupName
+  location: resourceGroupLocation
+}
 
 module identity 'modules-network-secured/network-secured-identity.bicep' = {
   name: '${name}-${uniqueSuffix}--identity'
+  scope: rg
   params: {
     location: location
     userAssignedIdentityName: uaiName
@@ -166,11 +184,15 @@ var storageNameClean = '${defaultStorageName}${uniqueSuffix}'
 // Create Virtual Network and Subnets
 module vnet 'modules-network-secured/networking/vnet.bicep' = {
   name: '${name}-${uniqueSuffix}--vnet'
+  scope: rg
   params: {
+    existingVirtualNetworkName: existingVnetName
+    existingVirtualNetworkResourceGroup: existingVnetResourceGroup
+    hubSubnetName: hubSubnetName
+    agentsSubnetName: agentsSubnetName
     location: location
     tags: tags
     suffix: uniqueSuffix
-    modelLocation: modelLocation
   }
   dependsOn: [
     identity
@@ -180,6 +202,7 @@ module vnet 'modules-network-secured/networking/vnet.bicep' = {
 // Dependent resources for the Azure Machine Learning workspace
 module aiDependencies 'modules-network-secured/network-secured-dependent-resources.bicep' = {
   name: '${name}-${uniqueSuffix}--dependencies'
+  scope: rg
   params: {
     suffix: uniqueSuffix
     storageName: storageNameClean
@@ -209,6 +232,7 @@ module aiDependencies 'modules-network-secured/network-secured-dependent-resourc
 
 module aiHub 'modules-network-secured/network-secured-ai-hub.bicep' = {
   name: '${name}-${uniqueSuffix}--hub'
+  scope: rg
   params: {
     // workspace organization
     aiHubName: '${defaultAiHubName}-${uniqueSuffix}'
@@ -238,7 +262,7 @@ module aiHub 'modules-network-secured/network-secured-ai-hub.bicep' = {
 
 resource storage 'Microsoft.Storage/storageAccounts@2022-05-01' existing = {
   name: aiDependencies.outputs.storageAccountName
-  scope: resourceGroup()
+  scope: rg
 }
 
 resource aiServices 'Microsoft.CognitiveServices/accounts@2023-05-01' existing = {
@@ -262,12 +286,14 @@ resource aiSearch 'Microsoft.Search/searchServices@2023-11-01' existing = {
 // 4. Configures network policies to restrict access to private endpoints only
 module privateEndpointAndDNS 'modules-network-secured/private-endpoint-and-dns.bicep' = {
   name: '${name}-${uniqueSuffix}--private-endpoint'
+  scope: rg
   params: {
     aiServicesName: aiDependencies.outputs.aiServicesName    // AI Services to secure
     aiSearchName: aiDependencies.outputs.aiSearchName        // AI Search to secure
     aiStorageId: aiDependencies.outputs.storageId           // Storage to secure
     storageName: storageNameClean                           // Clean storage name for DNS
     vnetName: vnet.outputs.virtualNetworkName    // VNet containing subnets
+    vnetResourceGroupName: vnetResourceGroupName // Resource group for VNet
     cxSubnetName: vnet.outputs.hubSubnetName        // Subnet for private endpoints
     suffix: uniqueSuffix                                    // Unique identifier
     hubWorkspaceId: aiHub.outputs.aiHubID                   // AI Hub workspace ID
@@ -282,6 +308,7 @@ module privateEndpointAndDNS 'modules-network-secured/private-endpoint-and-dns.b
 
 module aiProject 'modules-network-secured/network-secured-ai-project.bicep' = {
   name: '${name}-${uniqueSuffix}--project'
+  scope: rg
   params: {
     // workspace organization
     aiProjectName: '${defaultAiProjectName}-${uniqueSuffix}'
@@ -300,7 +327,7 @@ module aiProject 'modules-network-secured/network-secured-ai-project.bicep' = {
 
 module aiServiceRoleAssignments 'modules-network-secured/ai-service-role-assignments.bicep' = {
   name: '${name}-${uniqueSuffix}--AiServices-RA'
-  scope: resourceGroup()
+  scope: rg
   params: {
     aiServicesName: aiDependencies.outputs.aiServicesName
     aiProjectPrincipalId: identity.outputs.uaiPrincipalId
@@ -310,7 +337,7 @@ module aiServiceRoleAssignments 'modules-network-secured/ai-service-role-assignm
 
 module aiSearchRoleAssignments 'modules-network-secured/ai-search-role-assignments.bicep' = {
   name: '${name}-${uniqueSuffix}--AiSearch-RA'
-  scope: resourceGroup()
+  scope: rg
   params: {
     aiSearchName: aiDependencies.outputs.aiSearchName
     aiProjectPrincipalId: identity.outputs.uaiPrincipalId
@@ -320,6 +347,7 @@ module aiSearchRoleAssignments 'modules-network-secured/ai-search-role-assignmen
 
 module addCapabilityHost 'modules-network-secured/network-capability-host.bicep' = {
   name: '${name}-${uniqueSuffix}--capability-host'
+  scope: rg
   params: {
     capabilityHostName: '${uniqueSuffix}-${defaultCapabilityHostName}'
     aiHubName: aiHub.outputs.aiHubName
@@ -340,4 +368,4 @@ var subscriptionId = parts[1]
 var resourceGroupName = parts[2]
 var projectName = parts[3]
 var privateProjectHost = '${aiProject.outputs.aiProjectWorkspaceId}.workspace.${projectHost}'
-output PROJECT_CONNECTION_STRING string =  hubPublicNetworkAccess == 'Enabled' ? aiProject.outputs.projectConnectionString : '${privateProjectHost};${subscriptionId};${resourceGroupName};${projectName}'
+output PROJECT_CONNECTION_STRING string =  hubPublicNetworkAccess == 'Enabled' ? aiProject.outputs.projectConnectionString : '${privateProjectHost};${subscriptionId};${rgGroupName};${projectName}'

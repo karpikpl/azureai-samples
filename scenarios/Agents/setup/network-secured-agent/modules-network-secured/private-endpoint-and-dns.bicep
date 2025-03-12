@@ -34,6 +34,8 @@ param aiSearchName string
 param storageName string
 @description('Name of the Vnet')
 param vnetName string
+@description('Name of the Vner Resource Group')
+param vnetResourceGroupName string = resourceGroup().name
 @description('Name of the Customer subnet')
 param cxSubnetName string
 @description('Suffix for unique resource names')
@@ -62,7 +64,7 @@ resource aiSearch 'Microsoft.Search/searchServices@2023-11-01' existing = {
 // Reference existing network resources
 resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' existing = {
   name: vnetName
-  scope: resourceGroup()
+  scope: resourceGroup(vnetResourceGroupName)
 }
 
 resource cxSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existing = {

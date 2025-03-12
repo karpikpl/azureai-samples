@@ -32,11 +32,33 @@ param agentsSubnetName string = 'agents-subnet-${suffix}'
 @description('The name of Hub subnet')
 param hubSubnetName string = 'hub-subnet-${suffix}'
 
-@description('Model/AI Resource deployment location')
-param modelLocation string
+@description('The name of the existing virtual network')
+param existingVirtualNetworkName string = ''
+
+@description('The name of the existing virtual network resource group')
+param existingVirtualNetworkResourceGroup string = resourceGroup().name
+
+var existingVnetRg = !empty(existingVirtualNetworkResourceGroup)
+  ? existingVirtualNetworkResourceGroup
+  : resourceGroup().name
+
+var _agentsSubnetName = !empty(agentsSubnetName) ? agentsSubnetName : 'agents-subnet-${suffix}'
+var _hubSubnetName = !empty(hubSubnetName) ? hubSubnetName : 'hub-subnet-${suffix}'
+
+resource existingVirtualNetwork 'Microsoft.Network/virtualNetworks@2024-01-01' existing = if (!empty(existingVirtualNetworkName)) {
+  name: existingVirtualNetworkName
+  scope: resourceGroup(existingVnetRg)
+
+  resource hubSubnet 'subnets' existing = {
+    name: _hubSubnetName
+  }
+  resource agentsSubnet 'subnets' existing = {
+    name: _agentsSubnetName
+  }
+}
 
 // Virtual Network with segregated subnets
-resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
+resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = if (empty(existingVirtualNetworkName)) {
   name: vnetName
   location: location
   tags: tags
@@ -48,13 +70,13 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
     }
     subnets: [
       {
-        name: hubSubnetName
+        name: _hubSubnetName
         properties: {
           addressPrefix: '172.16.0.0/24'
         }
       }
       {
-        name: agentsSubnetName
+        name: _agentsSubnetName
         properties: {
           addressPrefix: '172.16.101.0/24'
           delegations: [
@@ -71,10 +93,18 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
   }
 }
 
+var hubSubnetRef = !empty(existingVirtualNetworkName)
+  ? existingVirtualNetwork::hubSubnet.id
+  : '${virtualNetwork.id}/subnets/${hubSubnetName}'
+
+var agentSubnetRef = !empty(existingVirtualNetworkName)
+  ? existingVirtualNetwork::agentsSubnet.id
+  : '${virtualNetwork.id}/subnets/${agentsSubnetName}'
+
 // Output variables
-output virtualNetworkName string = virtualNetwork.name
-output virtualNetworkId string = virtualNetwork.id
-output hubSubnetName string = hubSubnetName
-output agentsSubnetName string = agentsSubnetName
-output hubSubnetId string = '${virtualNetwork.id}/subnets/${hubSubnetName}'
-output agentsSubnetId string = '${virtualNetwork.id}/subnets/${agentsSubnetName}'
+output virtualNetworkName string = !empty(existingVirtualNetworkName) ? existingVirtualNetwork.name : virtualNetwork.name
+output virtualNetworkId string = !empty(existingVirtualNetworkName) ? existingVirtualNetwork.id : virtualNetwork.id
+output hubSubnetName string = _hubSubnetName
+output agentsSubnetName string = _agentsSubnetName
+output hubSubnetId string = hubSubnetRef
+output agentsSubnetId string = agentSubnetRef
