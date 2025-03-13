@@ -139,11 +139,11 @@ param aiSearchServiceName string = ''
 // VNET
 @description('If you provide this is will be used instead of creating a new VNET')
 param existingVnetName string = ''
-@description('The name of the resource group where the existing VNET is located')
+@description('The name of the resource group where the existing VNET is located. As of 3/13/2025 the resource group has to match the hub resource group.')
 param existingVnetResourceGroup string = ''
-@description('The name of Agents Subnet')
+@description('The name of Agents Subnet. As of 3/13/2025 the address space of the subnet has to be either 172 or 192.')
 param agentsSubnetName string = ''
-@description('The name of Customer Hub subnet')
+@description('The name of Customer Hub subnet.')
 param hubSubnetName string = ''
 
 @description('When true, the module will create private DNS zones and link them to the VNet. When false, it will not create any DNS zones.')

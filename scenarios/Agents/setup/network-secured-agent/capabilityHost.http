@@ -1,0 +1,58 @@
+@subscriptionId=00000000-0000-0000-0000-000000000000
+@rg=dummy-rg
+@capabilityName=dummy-caphost
+@hubName=dummy-hub
+@projectName=dummy-project
+@vnetName=dummy-vnet
+@subnetName=dummy-subnet
+@subnetId=/subscriptions/{{subscriptionId}}/resourceGroups/{{rg}}/providers/Microsoft.Network/virtualNetworks/{{vnetName}}/subnets/{{subnetName}}
+@baseUrl=https://management.azure.com/subscriptions/{{subscriptionId}}/resourceGroups/{{rg}}/providers/Microsoft.MachineLearningServices/workspaces/
+
+@token=<access token - use: az account get-access-token --resource=https://management.azure.com/ --query accessToken -o tsv>
+
+### create for hub
+PUT {{baseUrl}}/{{hubName}}/capabilityHosts/{{hubName}}-{{capabilityName}}?api-version=2024-10-01-preview
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "properties": {
+    "description": "This is a test capability host",
+    "capabilityHostKind": "Agents",
+    "customerSubnet": "{{subnetId}}"
+  }
+}
+
+### Get Hub Capability Host
+GET {{baseUrl}}/{{hubName}}/capabilityHosts/{{hubName}}-{{capabilityName}}?api-version=2024-10-01-preview
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+### Delete Hub Capability Host
+DELETE {{baseUrl}}/{{hubName}}/capabilityHosts/{{hubName}}-{{capabilityName}}?api-version=2024-10-01-preview
+Authorization: Bearer {{token}}
+
+### Create Project Capability Host
+PUT {{baseUrl}}/{{projectName}}/capabilityHosts/{{projectName}}-{{capabilityName}}?api-version=2024-10-01-preview
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "properties": {
+    "description": "This is a test capability host",
+    "capabilityHostKind": "Agents",
+    "aiServicesConnections": ["dummy-hub-connection-AIServices_aoai"],
+    "vectorStoreConnections": ["dummy-hub-connection-AISearch"],
+    "storageConnections": ["{{projectName}}/workspaceblobstore"]
+  }
+}
+
+### Get Project Capability Host
+GET {{baseUrl}}/{{projectName}}/capabilityHosts/{{projectName}}-{{capabilityName}}?api-version=2024-10-01-preview
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+### DELETE Project Capability Host
+DELETE {{baseUrl}}/{{projectName}}/capabilityHosts/{{projectName}}-{{capabilityName}}?api-version=2024-10-01-preview
+Authorization: Bearer {{token}}
+Content-Type: application/json
