@@ -50,6 +50,8 @@ param hubWorkspaceId string
 @secure()
 param hubWorkspaceName string
 
+param createDnsZones bool = true
+
 // Reference existing services that need private endpoints
 resource aiServices 'Microsoft.CognitiveServices/accounts@2023-05-01' existing = {
   name: aiServicesName
@@ -197,18 +199,18 @@ resource hubWorkspacePrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-11
 
 // Private DNS Zone for AI Services
 // - Enables custom DNS resolution for AI Services private endpoint
-resource aiServicesPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource aiServicesPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (createDnsZones) {
   name: 'privatelink.azureml.ms'         // Standard DNS zone for AI Services
   location: 'global'
 }
 
-resource openAiPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource openAiPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (createDnsZones) {
   name: 'privatelink.openai.azure.com'
   location: 'global'
 }
 
 // Link AI Services DNS Zone to VNet
-resource aiServicesLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
+resource aiServicesLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = if (createDnsZones) {
   parent: aiServicesPrivateDnsZone
   location: 'global'
   name: 'aiServices-${suffix}-link'
@@ -220,7 +222,7 @@ resource aiServicesLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2
   }
 }
 
-resource aiOpenAILink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
+resource aiOpenAILink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = if (createDnsZones) {
   parent: openAiPrivateDnsZone
   location: 'global'
   name: 'aiServicesOpenAI-${suffix}-link'
@@ -233,7 +235,7 @@ resource aiOpenAILink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@202
 }
 
 // DNS Zone Group for AI Services
-resource aiServicesDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = {
+resource aiServicesDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (createDnsZones) {
   parent: aiServicesPrivateEndpoint
   name: '${aiServicesName}-dns-group'
   properties: {
@@ -252,7 +254,7 @@ resource aiServicesDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGr
 }
 
 // DNS Zone Group for Azure OpenAI
-resource aiOpenAIDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = {
+resource aiOpenAIDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (createDnsZones)  {
   parent: aiServiceOpenAiPrivateEndpoint
   name: '${aiServicesName}-openAi-dns-group'
   properties: {
@@ -272,18 +274,18 @@ resource aiOpenAIDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGrou
 
 // Private DNS Zone for AI Hub
 // - Enables custom DNS resolution for AI Hub private endpoint
-resource mlApiPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource mlApiPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (createDnsZones) {
   name: 'privatelink.api.azureml.ms'
   location: 'global'
 }
 
-resource mlNotebooksPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource mlNotebooksPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (createDnsZones)  {
   name: 'privatelink.notebooksazureml.net'
   location: 'global'
 }
 
 // Link AI Hub DNS Zone to VNet
-resource mlApiPrivateDnsZoneVirtualNetworkLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+resource mlApiPrivateDnsZoneVirtualNetworkLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (createDnsZones)  {
   parent: mlApiPrivateDnsZone
   name: 'mlApi-${suffix}-link'
   location: 'global'
@@ -295,7 +297,7 @@ resource mlApiPrivateDnsZoneVirtualNetworkLink 'Microsoft.Network/privateDnsZone
   }
 }
 
-resource mlNotebooksPrivateDnsZoneVirtualNetworkLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+resource mlNotebooksPrivateDnsZoneVirtualNetworkLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (createDnsZones) {
   parent: mlNotebooksPrivateDnsZone
   name: 'mlNotebook-${suffix}-link'
   location: 'global'
@@ -307,7 +309,7 @@ resource mlNotebooksPrivateDnsZoneVirtualNetworkLink 'Microsoft.Network/privateD
   }
 }
 
-resource hubWorkspacePrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01' = {
+resource hubWorkspacePrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01' =if (createDnsZones)  {
   parent: hubWorkspacePrivateEndpoint
   name: '${hubWorkspaceName}-mlApiNotebook-dns-group'
   properties: {
@@ -334,13 +336,13 @@ resource hubWorkspacePrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/pri
 
 // Private DNS Zone for AI Search
 // - Enables custom DNS resolution for AI Search private endpoint
-resource aiSearchPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource aiSearchPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (createDnsZones) {
   name: 'privatelink.search.windows.net'  // Standard DNS zone for AI Search
   location: 'global'
 }
 
 // Link AI Search DNS Zone to VNet
-resource aiSearchLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
+resource aiSearchLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' =if (createDnsZones)  {
   parent: aiSearchPrivateDnsZone
   location: 'global'
   name: 'aiSearch-${suffix}-link'
@@ -353,7 +355,7 @@ resource aiSearchLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@202
 }
 
 // DNS Zone Group for AI Search
-resource aiSearchDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = {
+resource aiSearchDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (createDnsZones) {
   parent: aiSearchPrivateEndpoint
   name: '${aiSearchName}-dns-group'
   properties: {
@@ -370,13 +372,13 @@ resource aiSearchDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGrou
 
 // Private DNS Zone for Storage
 // - Enables custom DNS resolution for blob storage private endpoint
-resource storagePrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource storagePrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (createDnsZones) {
   name: 'privatelink.blob.${environment().suffixes.storage}'  // Dynamic DNS zone for storage
   location: 'global'
 }
 
 // Link Storage DNS Zone to VNet
-resource storageLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
+resource storageLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = if (createDnsZones) {
   parent: storagePrivateDnsZone
   location: 'global'
   name: 'storage-${suffix}-link'
@@ -389,7 +391,7 @@ resource storageLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024
 }
 
 // DNS Zone Group for Storage
-resource storageDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = {
+resource storageDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (createDnsZones) {
   parent: storagePrivateEndpoint
   name: '${storageName}-dns-group'
   properties: {

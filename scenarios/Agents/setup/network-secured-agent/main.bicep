@@ -146,6 +146,9 @@ param agentsSubnetName string = ''
 @description('The name of Customer Hub subnet')
 param hubSubnetName string = ''
 
+@description('When true, the module will create private DNS zones and link them to the VNet. When false, it will not create any DNS zones.')
+param createDnsZones bool = true
+
 var vnetResourceGroupName = !empty(existingVnetResourceGroup) ? existingVnetResourceGroup : rgGroupName
 
 // @description('The Ai Storage Account name. This is an optional field, and if not provided, the resource will be created.The resource should exist in same resource group')
@@ -298,6 +301,7 @@ module privateEndpointAndDNS 'modules-network-secured/private-endpoint-and-dns.b
     suffix: uniqueSuffix                                    // Unique identifier
     hubWorkspaceId: aiHub.outputs.aiHubID                   // AI Hub workspace ID
     hubWorkspaceName: aiHub.outputs.aiHubName               // AI Hub workspace name
+    createDnsZones: createDnsZones // Flag to create DNS zones
   }
   dependsOn: [
     aiServices    // Ensure AI Services exist

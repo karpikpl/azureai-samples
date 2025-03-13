@@ -64,6 +64,9 @@
       },
       "agentsSubnetName": {
         "value": ""
+      },
+      "createDnsZones": {
+        "value": true
       }
     }
   }

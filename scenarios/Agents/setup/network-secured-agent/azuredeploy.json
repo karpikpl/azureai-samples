@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.33.93.31351",
-      "templateHash": "7731566021748919999"
+      "templateHash": "14106063645609226928"
     }
   },
   "parameters": {
@@ -243,6 +243,13 @@
       "defaultValue": "",
       "metadata": {
         "description": "The name of Customer Hub subnet"
+      }
+    },
+    "createDnsZones": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "When true, the module will create private DNS zones and link them to the VNet. When false, it will not create any DNS zones."
       }
     },
     "userAssignedIdentityDefaultName": {
@@ -1463,6 +1470,9 @@
           },
           "hubWorkspaceName": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('rgGroupName')), 'Microsoft.Resources/deployments', format('{0}-{1}--hub', parameters('name'), parameters('uniqueSuffix'))), '2022-09-01').outputs.aiHubName.value]"
+          },
+          "createDnsZones": {
+            "value": "[parameters('createDnsZones')]"
           }
         },
         "template": {
@@ -1472,7 +1482,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.33.93.31351",
-              "templateHash": "3166301990649360682"
+              "templateHash": "5559159993159190101"
             }
           },
           "parameters": {
@@ -1536,6 +1546,10 @@
               "metadata": {
                 "description": "Name of the Customer Hub Workspace"
               }
+            },
+            "createDnsZones": {
+              "type": "bool",
+              "defaultValue": true
             }
           },
           "resources": [
@@ -1650,18 +1664,21 @@
               }
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateDnsZones",
               "apiVersion": "2020-06-01",
               "name": "privatelink.azureml.ms",
               "location": "global"
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateDnsZones",
               "apiVersion": "2020-06-01",
               "name": "privatelink.openai.azure.com",
               "location": "global"
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
               "apiVersion": "2024-06-01",
               "name": "[format('{0}/{1}', 'privatelink.azureml.ms', format('aiServices-{0}-link', parameters('suffix')))]",
@@ -1677,6 +1694,7 @@
               ]
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
               "apiVersion": "2024-06-01",
               "name": "[format('{0}/{1}', 'privatelink.openai.azure.com', format('aiServicesOpenAI-{0}-link', parameters('suffix')))]",
@@ -1692,6 +1710,7 @@
               ]
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}/{1}', format('{0}-private-endpoint', parameters('aiServicesName')), format('{0}-dns-group', parameters('aiServicesName')))]",
@@ -1712,6 +1731,7 @@
               ]
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}/{1}', format('{0}-openAi-private-endpoint', parameters('aiServicesName')), format('{0}-openAi-dns-group', parameters('aiServicesName')))]",
@@ -1732,18 +1752,21 @@
               ]
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateDnsZones",
               "apiVersion": "2020-06-01",
               "name": "privatelink.api.azureml.ms",
               "location": "global"
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateDnsZones",
               "apiVersion": "2020-06-01",
               "name": "privatelink.notebooksazureml.net",
               "location": "global"
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
               "apiVersion": "2020-06-01",
               "name": "[format('{0}/{1}', 'privatelink.api.azureml.ms', format('mlApi-{0}-link', parameters('suffix')))]",
@@ -1759,6 +1782,7 @@
               ]
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
               "apiVersion": "2020-06-01",
               "name": "[format('{0}/{1}', 'privatelink.notebooksazureml.net', format('mlNotebook-{0}-link', parameters('suffix')))]",
@@ -1774,6 +1798,7 @@
               ]
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2023-11-01",
               "name": "[format('{0}/{1}', format('{0}-private-endpoint', parameters('hubWorkspaceName')), format('{0}-mlApiNotebook-dns-group', parameters('hubWorkspaceName')))]",
@@ -1802,12 +1827,14 @@
               ]
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateDnsZones",
               "apiVersion": "2020-06-01",
               "name": "privatelink.search.windows.net",
               "location": "global"
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
               "apiVersion": "2024-06-01",
               "name": "[format('{0}/{1}', 'privatelink.search.windows.net', format('aiSearch-{0}-link', parameters('suffix')))]",
@@ -1823,6 +1850,7 @@
               ]
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}/{1}', format('{0}-private-endpoint', parameters('aiSearchName')), format('{0}-dns-group', parameters('aiSearchName')))]",
@@ -1842,12 +1870,14 @@
               ]
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateDnsZones",
               "apiVersion": "2020-06-01",
               "name": "[format('privatelink.blob.{0}', environment().suffixes.storage)]",
               "location": "global"
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
               "apiVersion": "2024-06-01",
               "name": "[format('{0}/{1}', format('privatelink.blob.{0}', environment().suffixes.storage), format('storage-{0}-link', parameters('suffix')))]",
@@ -1863,6 +1893,7 @@
               ]
             },
             {
+              "condition": "[parameters('createDnsZones')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}/{1}', format('{0}-private-endpoint', parameters('storageName')), format('{0}-dns-group', parameters('storageName')))]",
