@@ -1,73 +1,87 @@
 {
-    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
-    "contentVersion": "1.0.0.0",
-    "parameters": {
-      "defaultAiHubName": {
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "resourceGroupName": {
+      "value": ""
+    },
+    "resourceGroupLocation": {
+      "value": ""
+    },
+    "defaultAiHubName": {
         "value": "hub-demo"
-      },
-      "defaultAiHubFriendlyName": {
+    },
+    "defaultAiHubFriendlyName": {
         "value": "Agents Hub resource"
-      },
-      "defaultAiHubDescription": {
+    },
+    "defaultAiHubDescription": {
         "value": "This is an example AI resource for use in Azure AI Studio."
-      },
-      "defaultAiProjectName": {
+    },
+    "defaultAiProjectName": {
         "value": "project-demo"
-      },
-      "defaultAiProjectFriendlyName": {
+    },
+    "defaultAiProjectFriendlyName": {
         "value": "Agents Project resource"
-      },
-      "defaultAiProjectDescription": {
-        "value": "This is an example AI Project resource for use in Azure AI Studio."
-      },
-      "tags": {
-        "value": {}
-      },
-      "defaultAiSearchName": {
+    },
+    "defaultAiProjectDescription": {
+      "value": "This is an example AI Project resource for use in Azure AI Studio."
+    },
+    "defaultAiSearchName": {
         "value": "agent-ai-search"
-      },
-      "defaultCapabilityHostName": {
+    },
+    "defaultCapabilityHostName": {
         "value": "caphost1"
-      },
-      "defaultStorageName": {
+    },
+    "defaultStorageName": {
         "value": "agentstorage"
-      },
-      "defaultAiServicesName": {
+    },
+    "defaultAiServicesName": {
         "value": "agent-ai-services"
-      },
-      "modelName": {
+    },
+    "modelName": {
         "value": "gpt-4o-mini"
-      },
-      "modelFormat": {
+    },
+    "modelFormat": {
         "value": "OpenAI"
-      },
-      "modelVersion": {
+    },
+    "modelVersion": {
         "value": "2024-07-18"
-      },
-      "modelSkuName": {
+    },
+    "modelSkuName": {
         "value": "GlobalStandard"
-      },
-      "modelCapacity": {
+    },
+    "modelCapacity": {
         "value": 50
-      },
-      "modelLocation": {
-        "value": "westus2"
-      },
-      "existingVnetName": {
-        "value": ""
-      },
-      "existingVnetResourceGroup":{
-        "value": ""
-      },
-      "hubSubnetName": {
-        "value": ""
-      },
-      "agentsSubnetName": {
-        "value": ""
-      },
-      "createDnsZones": {
-        "value": true
-      }
+    },
+    "modelLocation": {
+      "value": "westus2"
+    },
+    "agentsVnetName": {
+      "value": ""
+    },
+    "agentsSubnetName": {
+      "value": ""
+    },
+    "hubSubnetName": {
+      "value": ""
+    },
+    "agentsPeSubnetName": {
+      "value": ""
+    },
+    "existingHubVirtualNetworkName": {
+      "value": ""
+    },
+    "existingHubVirtualNetworkResourceGroup": {
+      "value": ""
+    },
+    "existingAgentsVirtualNetworkName": {
+      "value": ""
+    },
+    "existingAgentsVirtualNetworkResourceGroup": {
+      "value": ""
+    },
+    "createDnsZones": {
+      "value": true
     }
   }
-  
+}

@@ -80,7 +80,7 @@ resource cxSubnet 'Microsoft.Network/virtualNetworks/subnets@2024-05-01' existin
 // - Creates network interface in customer hub subnet
 // - Establishes private connection to AI Services account
 resource aiServicesPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
-  name: '${aiServicesName}-private-endpoint'
+  name: '${aiServicesName}-${suffix}-private-endpoint'
   location: resourceGroup().location
   properties: {
     subnet: {
@@ -101,7 +101,7 @@ resource aiServicesPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-0
 }
 
 resource aiServiceOpenAiPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
-  name: '${aiServicesName}-openAi-private-endpoint'
+  name: '${aiServicesName}-${suffix}-openAi-private-endpoint'
   location: resourceGroup().location
   properties: {
     subnet: {
@@ -127,7 +127,7 @@ resource aiServiceOpenAiPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024
 // - Creates network interface in customer hub subnet
 // - Establishes private connection to AI Search service
 resource aiSearchPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
-  name: '${aiSearchName}-private-endpoint'
+  name: '${aiSearchName}-${suffix}-private-endpoint'
   location: resourceGroup().location
   properties: {
     subnet: {
@@ -153,7 +153,7 @@ resource aiSearchPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01'
 // - Creates network interface in customer hub subnet
 // - Establishes private connection to blob storage
 resource storagePrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
-  name: '${storageName}-private-endpoint'
+  name: '${storageName}-${suffix}-private-endpoint'
   location: resourceGroup().location
   properties: {
     subnet: {
@@ -175,7 +175,7 @@ resource storagePrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' 
 
 /*----------------------------------------------Hub Workspace Kind---------------------------------------------*/
 resource hubWorkspacePrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = {
-  name: '${hubWorkspaceName}-private-endpoint'
+  name: '${hubWorkspaceName}-${suffix}-private-endpoint'
   location: resourceGroup().location
   properties: {
     privateLinkServiceConnections: [

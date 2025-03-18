@@ -60,9 +60,12 @@ Customer needs to login to Azure subscription via Azure CLI and set the environm
 
 ## Architecture Overview
 
-### Network Security Design
+### Network Security Design - single VNET
 
-The deployment creates an isolated network environment:
+> [!Important]
+> Agent Subnet needs to be in the same RG as AI Foundry Hub and it needs to use 172/192 adress space.
+
+The deployment creates or re-uses an existing isolated network environment:
 
 - **Virtual Network (172.16.0.0/16)**
   - Customer Hub Subnet (172.16.0.0/24): Hosts private endpoints
@@ -78,6 +81,47 @@ The deployment creates an isolated network environment:
   - privatelink.azureml.ms
   - privatelink.search.windows.net
   - privatelink.blob.core.windows.net
+
+### Network Security Design - two VNETs
+
+> [!Important]
+> Agent Subnet needs to be in the same RG as AI Foundry Hub and it needs to use 172/192 adress space.
+
+Sometimes it's undesireble to use 172/192 address space, hence deployment to two VNETs with different address spaces.
+
+The deployment creates or re-uses an existing isolated network environment for the hub:
+
+- **Hub Virtual Network (10.23.0.0/22)**
+  - Customer Hub Subnet (10.23.0.0/24): Hosts private endpoints
+
+    - **Private Endpoints**
+      - AI Services
+      - AI Search
+      - Key Vault
+      - Storage Account
+
+    - **Private DNS Zones**
+      - privatelink.azureml.ms
+      - privatelink.search.windows.net
+      - privatelink.blob.core.windows.net
+
+- **Agents Virtual Network (172.17.0.0/23)**
+  - Agents Subnet (172.17.0.0/24): For azure ai agent workloads
+  - PE Subnet (172.16.0.0/24): Hosts private endpoints
+
+    - **Private Endpoints**
+      - AI Services
+      - AI Search
+      - Key Vault
+      - Storage Account
+
+    - **Private DNS Zones**
+      - privatelink.azureml.ms
+      - privatelink.search.windows.net
+      - privatelink.blob.core.windows.net
+
+>[!Information]
+> PE Subnet in Agents VNET is not required as same functionality can be achived with peering
 
 ### Core Components
 

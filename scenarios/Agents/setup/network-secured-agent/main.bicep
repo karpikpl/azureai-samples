@@ -31,11 +31,10 @@ var userAssignedIdentityOverride = '' // Override for existing managed identity
 param name string = 'network-secured-agent'
 
 // Create a short, unique suffix, that will be unique to each resource group
-param deploymentTimestamp string = utcNow('yyyyMMddHHmmss')
-param uniqueSuffix string = substring(uniqueString('${subscription().id}-${deploymentTimestamp}'), 0, 4)
+param resourceGroupName string = '${name}-rg'
+param uniqueSuffix string = substring(uniqueString('${subscription().id}-${resourceGroupName}'), 0, 4)
 
 /* ---------------------------------- Default Parameters if Overrides Not Set ---------------------------------- */
-param rgGroupName string = '${name}-rg'
 
 
 // Parameters
@@ -137,19 +136,31 @@ param aiServiceAccountName string = ''
 param aiSearchServiceName string = ''
 
 // VNET
-@description('If you provide this is will be used instead of creating a new VNET')
-param existingVnetName string = ''
-@description('The name of the resource group where the existing VNET is located. As of 3/13/2025 the resource group has to match the hub resource group.')
-param existingVnetResourceGroup string = ''
+@description('The name of the agents virtual network to create. As of 3/13/2025 the address space of the subnet has to be either 172 or 192.')
+param agentsVnetName string = ''
 @description('The name of Agents Subnet. As of 3/13/2025 the address space of the subnet has to be either 172 or 192.')
 param agentsSubnetName string = ''
 @description('The name of Customer Hub subnet.')
 param hubSubnetName string = ''
+@description('The name of PE Agents Subnet')
+param agentsPeSubnetName string = ''
+
+@description('The name of the existing hub virtual network - when deploying with agents subnet. It needs to use 172 or 192 address space.')
+param existingHubVirtualNetworkName string = ''
+
+@description('The name of the existing virtual network resource group. Agents subnet should be in the same resource group as the hub.')
+param existingHubVirtualNetworkResourceGroup string = ''
+
+@description('The name of the existing agents virtual network. It needs to use 172 or 192 address space.')
+param existingAgentsVirtualNetworkName string = ''
+
+@description('The name of the existing agents virtual network resource group. Agents subnet should be in the same resource group as the hub.')
+param existingAgentsVirtualNetworkResourceGroup string = ''
+
+var useTwoVnetsSolution = !empty(agentsVnetName) || !empty(existingAgentsVirtualNetworkName)
 
 @description('When true, the module will create private DNS zones and link them to the VNet. When false, it will not create any DNS zones.')
 param createDnsZones bool = true
-
-var vnetResourceGroupName = !empty(existingVnetResourceGroup) ? existingVnetResourceGroup : rgGroupName
 
 // @description('The Ai Storage Account name. This is an optional field, and if not provided, the resource will be created.The resource should exist in same resource group')
 // param aiStorageAccountName string = ''
@@ -161,7 +172,7 @@ param userAssignedIdentityDefaultName string = 'secured-agents-identity-${unique
 var uaiName = (userAssignedIdentityOverride == '') ? userAssignedIdentityDefaultName : userAssignedIdentityOverride
 
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: rgGroupName
+  name: resourceGroupName
   location: resourceGroupLocation
 }
 
@@ -186,13 +197,17 @@ var storageNameClean = '${defaultStorageName}${uniqueSuffix}'
 
 // Create Virtual Network and Subnets
 module vnet 'modules-network-secured/networking/vnet.bicep' = {
-  name: '${name}-${uniqueSuffix}--vnet'
-  scope: rg
+  name: '${name}-${uniqueSuffix}--vnets'
   params: {
-    existingVirtualNetworkName: existingVnetName
-    existingVirtualNetworkResourceGroup: existingVnetResourceGroup
+    resourceGroupName: resourceGroupName
+    existingHubVirtualNetworkName: existingHubVirtualNetworkName
+    existingHubVirtualNetworkResourceGroup: existingHubVirtualNetworkResourceGroup
+    existingAgentsVirtualNetworkName: existingAgentsVirtualNetworkName
+    existingAgentsVirtualNetworkResourceGroup: existingAgentsVirtualNetworkResourceGroup
+    agentsVnetName: agentsVnetName
     hubSubnetName: hubSubnetName
     agentsSubnetName: agentsSubnetName
+    agentsPeSubnetName: agentsPeSubnetName
     location: location
     tags: tags
     suffix: uniqueSuffix
@@ -295,8 +310,8 @@ module privateEndpointAndDNS 'modules-network-secured/private-endpoint-and-dns.b
     aiSearchName: aiDependencies.outputs.aiSearchName        // AI Search to secure
     aiStorageId: aiDependencies.outputs.storageId           // Storage to secure
     storageName: storageNameClean                           // Clean storage name for DNS
-    vnetName: vnet.outputs.virtualNetworkName    // VNet containing subnets
-    vnetResourceGroupName: vnetResourceGroupName // Resource group for VNet
+    vnetName: vnet.outputs.hubVirtualNetworkName    // VNet containing subnets
+    vnetResourceGroupName: vnet.outputs.hubVirtualNetworkResourceGroupName // Resource group for VNet
     cxSubnetName: vnet.outputs.hubSubnetName        // Subnet for private endpoints
     suffix: uniqueSuffix                                    // Unique identifier
     hubWorkspaceId: aiHub.outputs.aiHubID                   // AI Hub workspace ID
@@ -307,6 +322,30 @@ module privateEndpointAndDNS 'modules-network-secured/private-endpoint-and-dns.b
     aiServices    // Ensure AI Services exist
     aiSearch      // Ensure AI Search exists
     storage       // Ensure Storage exists
+  ]
+}
+
+module privateEndpointAndDNSForAgents 'modules-network-secured/private-endpoint-and-dns.bicep' = if(useTwoVnetsSolution) {
+  name: '${name}-agents-${uniqueSuffix}--private-endpoint'
+  scope: rg
+  params: {
+    aiServicesName: aiDependencies.outputs.aiServicesName    // AI Services to secure
+    aiSearchName: aiDependencies.outputs.aiSearchName        // AI Search to secure
+    aiStorageId: aiDependencies.outputs.storageId           // Storage to secure
+    storageName: storageNameClean                           // Clean storage name for DNS
+    vnetName: vnet.outputs.agentsVirtualNetworkName    // VNet containing subnets
+    vnetResourceGroupName: vnet.outputs.agentsVirtualNetworkResourceGroupName // Resource group for VNet
+    cxSubnetName: vnet.outputs.agentsPeSubnetName        // Subnet for private endpoints
+    suffix: '${uniqueSuffix}-agents'                        // Unique identifier
+    hubWorkspaceId: aiHub.outputs.aiHubID                   // AI Hub workspace ID
+    hubWorkspaceName: aiHub.outputs.aiHubName               // AI Hub workspace name
+    createDnsZones: createDnsZones // Flag to create DNS zones
+  }
+  dependsOn: [
+    aiServices    // Ensure AI Services exist
+    aiSearch      // Ensure AI Search exists
+    storage       // Ensure Storage exists
+    privateEndpointAndDNS // do PEs in order
   ]
 }
 
@@ -369,7 +408,7 @@ var projectConnectionString =  aiProject.outputs.projectConnectionString
 var parts = split(projectConnectionString, ';')
 var projectHost = parts[0]
 var subscriptionId = parts[1]
-var resourceGroupName = parts[2]
+// var resourceGroupName = parts[2]
 var projectName = parts[3]
 var privateProjectHost = '${aiProject.outputs.aiProjectWorkspaceId}.workspace.${projectHost}'
-output PROJECT_CONNECTION_STRING string =  hubPublicNetworkAccess == 'Enabled' ? aiProject.outputs.projectConnectionString : '${privateProjectHost};${subscriptionId};${rgGroupName};${projectName}'
+output PROJECT_CONNECTION_STRING string =  hubPublicNetworkAccess == 'Enabled' ? aiProject.outputs.projectConnectionString : '${privateProjectHost};${subscriptionId};${resourceGroupName};${projectName}'
