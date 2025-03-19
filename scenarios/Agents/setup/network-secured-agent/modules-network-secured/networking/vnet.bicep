@@ -116,3 +116,4 @@ output agentsPeSubnetName string = !useTwoVnetsSolution ? vnet.outputs.agentsPeS
 output hubSubnetId string = !useTwoVnetsSolution ? vnet.outputs.hubSubnetId : vnets.outputs.hubSubnetId
 output agentsSubnetId string = !useTwoVnetsSolution ? vnet.outputs.agentsSubnetId : vnets.outputs.agentsSubnetId
 output agentsPeSubnetId string = !useTwoVnetsSolution ? vnet.outputs.agentsPeSubnetId : vnets.outputs.agentsPeSubnetId
+output useTwoVnetsSolution bool = useTwoVnetsSolution

@@ -370,7 +370,10 @@ module aiProject 'modules-network-secured/network-secured-ai-project.bicep' = {
     uaiName: identity.outputs.uaiName
     publicNetworkAccess: projectPublicNetworkAccess // Public network access for the workspace
   }
-  dependsOn: [
+  dependsOn: useTwoVnetsSolution ? [
+    privateEndpointAndDNS
+    privateEndpointAndDNSForAgents
+  ]: [
     privateEndpointAndDNS
   ]
 }
