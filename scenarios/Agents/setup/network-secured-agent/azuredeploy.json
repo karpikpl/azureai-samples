@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.33.93.31351",
-      "templateHash": "5713662352568448504"
+      "templateHash": "18089321848999095655"
     }
   },
   "parameters": {
@@ -16,6 +16,10 @@
     "resourceGroupName": {
       "type": "string",
       "defaultValue": "[format('{0}-rg', parameters('name'))]"
+    },
+    "agentNetworkingResourceGroupName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-agent-utils-rg', parameters('name'))]"
     },
     "uniqueSuffix": {
       "type": "string",
@@ -2630,7 +2634,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "[format('{0}-agents-{1}--private-endpoint', parameters('name'), parameters('uniqueSuffix'))]",
-      "resourceGroup": "[parameters('resourceGroupName')]",
+      "resourceGroup": "[parameters('agentNetworkingResourceGroupName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"

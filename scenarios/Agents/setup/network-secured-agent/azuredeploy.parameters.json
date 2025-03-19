@@ -5,6 +5,9 @@
     "resourceGroupName": {
       "value": ""
     },
+    "agentNetworkingResourceGroupName": {
+      "value": ""
+    },
     "resourceGroupLocation": {
       "value": ""
     },

@@ -85,7 +85,7 @@ resource existingAgentVirtualNetwork 'Microsoft.Network/virtualNetworks@2024-01-
 
 // Virtual Network with segregated subnets
 module hubVirtualNetwork 'internalVnet.bicep' = if (empty(existingHubVirtualNetworkName)) {
-  name: 'hub-vnet-${suffix}'
+  name: hubVnetName
   scope: resourceGroup(hubVnetRg)
   params: {
     location: location
@@ -104,7 +104,7 @@ module hubVirtualNetwork 'internalVnet.bicep' = if (empty(existingHubVirtualNetw
 }
 
 module agentsVirtualNetwork 'internalVnet.bicep' = if (empty(existingAgentsVirtualNetworkName)) {
-  name: 'agents-vnet-${suffix}'
+  name: agentsVnetName
   scope: resourceGroup(agentsVnetRg)
   params: {
     location: location

@@ -79,8 +79,11 @@ The deployment creates or re-uses an existing isolated network environment:
 
 - **Private DNS Zones**
   - privatelink.azureml.ms
+  - privatelink.api.azureml.ms
+  - privatelink.notebooksazureml.net
   - privatelink.search.windows.net
   - privatelink.blob.core.windows.net
+  - privatelink.openai.azure.com
 
 ### Network Security Design - two VNETs
 
@@ -102,8 +105,11 @@ The deployment creates or re-uses an existing isolated network environment for t
 
     - **Private DNS Zones**
       - privatelink.azureml.ms
+      - privatelink.api.azureml.ms
+      - privatelink.notebooksazureml.net
       - privatelink.search.windows.net
       - privatelink.blob.core.windows.net
+      - privatelink.openai.azure.com
 
 - **Agents Virtual Network (172.17.0.0/23)**
   - Agents Subnet (172.17.0.0/24): For azure ai agent workloads
@@ -117,8 +123,11 @@ The deployment creates or re-uses an existing isolated network environment for t
 
     - **Private DNS Zones**
       - privatelink.azureml.ms
+      - privatelink.api.azureml.ms
+      - privatelink.notebooksazureml.net
       - privatelink.search.windows.net
       - privatelink.blob.core.windows.net
+      - privatelink.openai.azure.com
 
 >[!Information]
 > PE Subnet in Agents VNET is not required as same functionality can be achived with peering

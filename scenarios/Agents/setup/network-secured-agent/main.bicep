@@ -32,6 +32,7 @@ param name string = 'network-secured-agent'
 
 // Create a short, unique suffix, that will be unique to each resource group
 param resourceGroupName string = '${name}-rg'
+param agentNetworkingResourceGroupName string = '${name}-agent-utils-rg'
 param uniqueSuffix string = substring(uniqueString('${subscription().id}-${resourceGroupName}'), 0, 4)
 
 /* ---------------------------------- Default Parameters if Overrides Not Set ---------------------------------- */
@@ -173,6 +174,11 @@ var uaiName = (userAssignedIdentityOverride == '') ? userAssignedIdentityDefault
 
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: resourceGroupName
+  location: resourceGroupLocation
+}
+
+resource agentRg 'Microsoft.Resources/resourceGroups@2021-04-01' = if (useTwoVnetsSolution) {
+  name: agentNetworkingResourceGroupName
   location: resourceGroupLocation
 }
 
@@ -327,8 +333,9 @@ module privateEndpointAndDNS 'modules-network-secured/private-endpoint-and-dns.b
 
 module privateEndpointAndDNSForAgents 'modules-network-secured/private-endpoint-and-dns.bicep' = if(useTwoVnetsSolution) {
   name: '${name}-agents-${uniqueSuffix}--private-endpoint'
-  scope: rg
+  scope: resourceGroup(agentNetworkingResourceGroupName)
   params: {
+    aiResourceGroupName: resourceGroupName
     aiServicesName: aiDependencies.outputs.aiServicesName    // AI Services to secure
     aiSearchName: aiDependencies.outputs.aiSearchName        // AI Search to secure
     aiStorageId: aiDependencies.outputs.storageId           // Storage to secure

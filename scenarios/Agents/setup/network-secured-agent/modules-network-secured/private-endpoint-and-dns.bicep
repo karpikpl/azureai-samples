@@ -50,17 +50,20 @@ param hubWorkspaceId string
 @secure()
 param hubWorkspaceName string
 
+@description('Name of the resource group for the AI dependent services')
+param aiResourceGroupName string = resourceGroup().name
+
 param createDnsZones bool = true
 
 // Reference existing services that need private endpoints
 resource aiServices 'Microsoft.CognitiveServices/accounts@2023-05-01' existing = {
   name: aiServicesName
-  scope: resourceGroup()
+  scope: resourceGroup(aiResourceGroupName)
 }
 
 resource aiSearch 'Microsoft.Search/searchServices@2023-11-01' existing = {
   name: aiSearchName
-  scope: resourceGroup()
+  scope: resourceGroup(aiResourceGroupName)
 }
 
 // Reference existing network resources
