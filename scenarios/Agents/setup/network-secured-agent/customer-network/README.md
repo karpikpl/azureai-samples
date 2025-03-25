@@ -2,6 +2,8 @@
 
 Bicep deployment to simulate real customer scenario.
 
+![Network Architecture](../diagrams/customer-networks.png)
+
 1. DNS zones are centrally managed in the hub VNet and are not allowed in bicep deployments.
 2. Virtual network for hub uses 10.x address space.
 3. Virtual network for agents uses 172.x address space.
@@ -12,6 +14,8 @@ Bicep creates the networking stack so that another deployment can use it for Fou
 Since it's hard to replicate central DNS or express route, deployment creates 2 peered VNets and DNS Zones linked to both of them.
 
 ## Parameters for follow up deployment
+
+![Hub Network Architecture](../diagrams/hub-on-customer-networks.png)
 
 ```json
 {
@@ -98,4 +102,4 @@ Since it's hard to replicate central DNS or express route, deployment creates 2 
       }
     }
 }
-```
+````
