@@ -330,7 +330,6 @@ module dnsZoneLinks 'dns-zone-links.bicep' = if (createDnsZones) {
     vnetName: vnetName
     vnetResourceGroupName: vnetResourceGroupName
     suffix: suffix
-    createDnsZones: createDnsZones
   }
   dependsOn: [
     aiServicesPrivateDnsZone

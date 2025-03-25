@@ -101,7 +101,7 @@ param tags object = {}
 param defaultAiSearchName string = 'agent-ai-search'
 
 @description('Name for capabilityHost.')
-param defaultCapabilityHostName string = 'caphost1'
+param defaultCapabilityHostName string = 'AgentsCapHost'
 
 @description('Name of the storage account')
 param defaultStorageName string = 'agentstorage'
@@ -366,7 +366,6 @@ module dnsZoneLinks 'modules-network-secured/dns-zone-links.bicep' = if(useTwoVn
     vnetName: vnet.outputs.agentsVirtualNetworkName
     vnetResourceGroupName: vnet.outputs.agentsVirtualNetworkResourceGroupName
     suffix: uniqueSuffix
-    createDnsZones: createDnsZones
   }
   dependsOn: [
     privateEndpointAndDNS
@@ -419,7 +418,7 @@ module addCapabilityHost 'modules-network-secured/network-capability-host.bicep'
   name: '${name}-${uniqueSuffix}--capability-host'
   scope: rg
   params: {
-    capabilityHostName: '${uniqueSuffix}-${defaultCapabilityHostName}'
+    capabilityHostName: defaultCapabilityHostName
     aiHubName: aiHub.outputs.aiHubName
     aiProjectName: aiProject.outputs.aiProjectName
     acsConnectionName: aiHub.outputs.acsConnectionName
