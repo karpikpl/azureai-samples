@@ -52,6 +52,14 @@ resource cognitiveServicesUserRole 'Microsoft.Authorization/roleDefinitions@2022
   scope: resourceGroup()
 }
 
+// AI Administrator Role
+// https://learn.microsoft.com/en-us/azure/ai-foundry/concepts/rbac-ai-foundry#azure-ai-administrator-role-preview
+// Provides basic access to use AI services
+resource aiAdministratorUserRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  name: 'b78c5d69-af96-48a3-bf8d-a8b4d589de94'  // Built-in role ID
+  scope: resourceGroup()
+}
+
 /* -------------------------------------------- Role Assignments -------------------------------------------- */
 
 // Assign Cognitive Services Contributor role
@@ -86,6 +94,18 @@ resource cognitiveServicesUserRoleAssignment 'Microsoft.Authorization/roleAssign
   properties: {
     principalId: aiProjectPrincipalId
     roleDefinitionId: cognitiveServicesUserRole.id
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Assign AI Administrator role
+resource aiAdministratorUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: resourceGroup()
+  // Use subscription ID and resource group ID to ensure uniqueness across deployments
+  name: guid(subscription().subscriptionId, resourceGroup().id, aiAdministratorUserRole.id, aiProjectId)
+  properties: {
+    principalId: aiProjectPrincipalId
+    roleDefinitionId: aiAdministratorUserRole.id
     principalType: 'ServicePrincipal'
   }
 }

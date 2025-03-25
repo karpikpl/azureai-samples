@@ -50,6 +50,9 @@ param existingAgentsVirtualNetworkName string = ''
 @description('The name of the existing agents virtual network resource group')
 param existingAgentsVirtualNetworkResourceGroup string = ''
 
+@description('Set to true to peer the agents vnet with the hub vnet')
+param usePeering bool = false
+
 var hubVnetRg = !empty(existingHubVirtualNetworkResourceGroup)
   ? existingHubVirtualNetworkResourceGroup
   : resourceGroupName
@@ -110,6 +113,7 @@ module agentsVirtualNetwork 'internalVnet.bicep' = if (empty(existingAgentsVirtu
     location: location
     name: agentsVnetName
     tags: tags
+    peerToNetworkName: usePeering ? hubVirtualNetwork.outputs.name : ''
     addressPrefixes: '172.17.0.0/23'
     subnets: [
       {
@@ -136,28 +140,6 @@ module agentsVirtualNetwork 'internalVnet.bicep' = if (empty(existingAgentsVirtu
   }
 }
 
-// VNET Peering
-// resource vnetPeering 'Microsoft.Network/virtualNetworks/virtualNetworkPeerings@2024-05-01' = if (empty(existingAgentsVirtualNetworkName) && empty(existingHubVirtualNetworkName)) {
-//   parent: hubVirtualNetwork
-//   name: 'peer-to-${agentsVirtualNetwork.name}'
-//   properties: {
-//     allowVirtualNetworkAccess: true
-//     remoteVirtualNetwork: {
-//       id: agentsVirtualNetwork.id
-//     }
-//   }
-// }
-
-// resource agentVnetPeering 'Microsoft.Network/virtualNetworks/virtualNetworkPeerings@2024-05-01' = if (empty(existingAgentsVirtualNetworkName) && empty(existingHubVirtualNetworkName)) {
-//   parent: agentsVirtualNetwork
-//   name: 'peer-to-${hubVirtualNetwork.name}'
-//   properties: {
-//     allowVirtualNetworkAccess: true
-//     remoteVirtualNetwork: {
-//       id: hubVirtualNetwork.id
-//     }
-//   }
-// }
 
 var hubSubnetRef = !empty(existingHubVirtualNetworkName)
   ? existingHubVirtualNetwork::hubSubnet.id

@@ -122,7 +122,7 @@ param modelVersion string = '2024-07-18'
 param modelSkuName string = 'GlobalStandard'
 
 @description('Model deployment capacity')
-param modelCapacity int = 50
+param modelCapacity int = 1000
 
 @description('Model deployment location. If you want to deploy an Azure AI resource/model in different location than the rest of the resources created.')
 param modelLocation string = resourceGroupLocation
@@ -158,6 +158,9 @@ param existingAgentsVirtualNetworkName string = ''
 @description('The name of the existing agents virtual network resource group. Agents subnet should be in the same resource group as the hub.')
 param existingAgentsVirtualNetworkResourceGroup string = ''
 
+@description('Set to true to peer the agents vnet with the hub vnet')
+param usePeering bool = false
+
 var useTwoVnetsSolution = !empty(agentsVnetName) || !empty(existingAgentsVirtualNetworkName)
 
 @description('When true, the module will create private DNS zones and link them to the VNet. When false, it will not create any DNS zones.')
@@ -177,7 +180,8 @@ resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   location: resourceGroupLocation
 }
 
-resource agentRg 'Microsoft.Resources/resourceGroups@2021-04-01' = if (useTwoVnetsSolution) {
+// create a new resource group for the agent networking resources - we don't need it when using peering
+resource agentRg 'Microsoft.Resources/resourceGroups@2021-04-01' = if (useTwoVnetsSolution && !usePeering) {
   name: agentNetworkingResourceGroupName
   location: resourceGroupLocation
 }
@@ -217,6 +221,7 @@ module vnet 'modules-network-secured/networking/vnet.bicep' = {
     location: location
     tags: tags
     suffix: uniqueSuffix
+    usePeering: usePeering
   }
   dependsOn: [
     identity
@@ -251,8 +256,6 @@ module aiDependencies 'modules-network-secured/network-secured-dependent-resourc
      userAssignedIdentityName: identity.outputs.uaiName
     }
 }
-
-
 
 module aiHub 'modules-network-secured/network-secured-ai-hub.bicep' = {
   name: '${name}-${uniqueSuffix}--hub'
@@ -331,7 +334,7 @@ module privateEndpointAndDNS 'modules-network-secured/private-endpoint-and-dns.b
   ]
 }
 
-module privateEndpointAndDNSForAgents 'modules-network-secured/private-endpoint-and-dns.bicep' = if(useTwoVnetsSolution) {
+module privateEndpointAndDNSForAgents 'modules-network-secured/private-endpoint-and-dns.bicep' = if(useTwoVnetsSolution && !usePeering) {
   name: '${name}-agents-${uniqueSuffix}--private-endpoint'
   scope: resourceGroup(agentNetworkingResourceGroupName)
   params: {
@@ -353,6 +356,20 @@ module privateEndpointAndDNSForAgents 'modules-network-secured/private-endpoint-
     aiSearch      // Ensure AI Search exists
     storage       // Ensure Storage exists
     privateEndpointAndDNS // do PEs in order
+  ]
+}
+
+module dnsZoneLinks 'modules-network-secured/dns-zone-links.bicep' = if(useTwoVnetsSolution && usePeering && createDnsZones) {
+  name: 'dns-zone-links-for-${agentsVnetName}'
+  scope: rg
+  params: {
+    vnetName: vnet.outputs.agentsVirtualNetworkName
+    vnetResourceGroupName: vnet.outputs.agentsVirtualNetworkResourceGroupName
+    suffix: uniqueSuffix
+    createDnsZones: createDnsZones
+  }
+  dependsOn: [
+    privateEndpointAndDNS
   ]
 }
 

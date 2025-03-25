@@ -54,10 +54,13 @@ param existingAgentsVirtualNetworkName string = ''
 @description('The name of the existing agents virtual network resource group')
 param existingAgentsVirtualNetworkResourceGroup string = ''
 
+@description('Set to true to peer the agents vnet with the hub vnet')
+param usePeering bool = false
+
 var useTwoVnetsSolution = !empty(agentsVnetName) || !empty(existingAgentsVirtualNetworkName)
 
 module vnets 'twoVnets.bicep' = if (useTwoVnetsSolution) {
-  name: 'agents-${suffix}--vnets'
+  name: 'two-agents-${suffix}-vnets'
   params: {
     resourceGroupName: resourceGroupName
     hubVnetName: hubVnetName
@@ -72,11 +75,12 @@ module vnets 'twoVnets.bicep' = if (useTwoVnetsSolution) {
     location: location
     tags: tags
     suffix: suffix
+    usePeering: usePeering
   }
 }
 
 module vnet 'oneVnet.bicep' = if (!useTwoVnetsSolution) {
-  name: 'one-${suffix}--vnet'
+  name: 'one-${suffix}-vnet'
   scope: resourceGroup(resourceGroupName)
   params: {
     hubVnetName: hubVnetName
