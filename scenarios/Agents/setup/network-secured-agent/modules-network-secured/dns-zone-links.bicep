@@ -56,6 +56,12 @@ resource storagePrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = 
   location: 'global'
 }
 
+// - Enables custom DNS resolution for blob storage private endpoint
+resource storageFilePrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+  name: 'privatelink.file.${environment().suffixes.storage}' // Dynamic DNS zone for storage
+  location: 'global'
+}
+
 // Links -----------------------------------------------------------------------------------
 
 // Link AI Services DNS Zone to VNet
@@ -126,6 +132,19 @@ resource storageLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024
   parent: storagePrivateDnsZone
   location: 'global'
   name: 'storage-${suffix}-link-to-${vnetName}'
+  properties: {
+    virtualNetwork: {
+      id: vnet.id // Link to specified VNet
+    }
+    registrationEnabled: false // Don't auto-register VNet resources
+  }
+}
+
+// Link Storage DNS Zone to VNet
+resource storageFileLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
+  parent: storageFilePrivateDnsZone
+  location: 'global'
+  name: 'storage-file-${suffix}-link-to-${vnetName}'
   properties: {
     virtualNetwork: {
       id: vnet.id // Link to specified VNet

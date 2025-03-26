@@ -135,7 +135,8 @@ resource aiHub 'Microsoft.MachineLearningServices/workspaces@2024-10-01-preview'
     friendlyName: aiHubFriendlyName
     description: aiHubDescription
     primaryUserAssignedIdentity: userAssignedIdentity.id
-
+    systemDatastoresAuthMode: 'identity'
+    
     publicNetworkAccess: publicNetworkAccess
     // Core service connections
     keyVault: keyVaultId                           // For secret management

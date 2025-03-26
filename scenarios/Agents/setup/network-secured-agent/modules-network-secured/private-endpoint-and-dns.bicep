@@ -177,6 +177,27 @@ resource storagePrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' 
   }
 }
 
+resource storageFilePrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
+  name: '${storageName}-file-${suffix}-private-endpoint'
+  location: resourceGroup().location
+  properties: {
+    subnet: {
+      id: cxSubnet.id // Deploy in customer hub subnet
+    }
+    privateLinkServiceConnections: [
+      {
+        name: '${storageName}-file-private-link-service-connection'
+        properties: {
+          privateLinkServiceId: aiStorageId
+          groupIds: [
+            'file' // Target file storage
+          ]
+        }
+      }
+    ]
+  }
+}
+
 /*----------------------------------------------Hub Workspace Kind---------------------------------------------*/
 resource hubWorkspacePrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = {
   name: '${hubWorkspaceName}-${suffix}-private-endpoint'
@@ -308,6 +329,11 @@ resource storagePrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = 
   location: 'global'
 }
 
+resource storageFilePrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (createDnsZones) {
+  name: 'privatelink.file.${environment().suffixes.storage}' // Dynamic DNS zone for storage
+  location: 'global'
+}
+
 // DNS Zone Group for Storage
 resource storageDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (createDnsZoneGroups) {
   parent: storagePrivateEndpoint
@@ -318,6 +344,21 @@ resource storageDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroup
         name: '${storageName}-dns-config'
         properties: {
           privateDnsZoneId: storagePrivateDnsZone.id
+        }
+      }
+    ]
+  }
+}
+
+resource storageFileDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (createDnsZoneGroups) {
+  parent: storageFilePrivateEndpoint
+  name: '${storageName}-file-dns-group'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: '${storageName}-file-dns-config'
+        properties: {
+          privateDnsZoneId: storageFilePrivateDnsZone.id
         }
       }
     ]
@@ -339,5 +380,6 @@ module dnsZoneLinks 'dns-zone-links.bicep' = if (createDnsZones) {
     mlNotebooksPrivateDnsZone
     aiSearchPrivateDnsZone
     storagePrivateDnsZone
+    storageFilePrivateDnsZone
   ]
 }
