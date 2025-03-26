@@ -30,7 +30,7 @@ resource aiProject 'Microsoft.MachineLearningServices/workspaces@2024-10-01-prev
 
 #disable-next-line BCP081
 resource hubCapabilityHost 'Microsoft.MachineLearningServices/workspaces/capabilityHosts@2024-10-01-preview' = {
-  name: '${aiHubName}-${capabilityHostName}'
+  name: capabilityHostName
   parent: aiHub
   properties: empty(customerSubnetId) ? {
      capabilityHostKind: 'Agents'
@@ -42,7 +42,7 @@ resource hubCapabilityHost 'Microsoft.MachineLearningServices/workspaces/capabil
 
 #disable-next-line BCP081
 resource projectCapabilityHost 'Microsoft.MachineLearningServices/workspaces/capabilityHosts@2024-10-01-preview' = {
-  name: '${aiProjectName}-${capabilityHostName}'
+  name: capabilityHostName
   parent: aiProject
   properties: {
     capabilityHostKind: 'Agents'

@@ -1,0 +1,1 @@
+[![Deploy To Azure](https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/1-CONTRIBUTION-GUIDE/images/deploytoazure.svg?sanitize=true)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Fkarpikpl%2Fazureai-samples%2Ffeature%2Fbyo-vnet%2Fscenarios%2FAgents%2Fsetup%2Fnetwork-secured-agent%2Fazuredeploy.json)

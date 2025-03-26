@@ -1,3 +1,4 @@
+targetScope= 'subscription'
 /*
 Virtual Network Module
 ---------------------
@@ -14,6 +15,9 @@ This module deploys the core network infrastructure with security controls:
    - Subnet delegation
 */
 
+@description('Resource group name for main vnet - where AI Foundry is deployed')
+param resourceGroupName string
+
 @description('Azure region for the deployment')
 param location string
 
@@ -23,58 +27,97 @@ param tags object = {}
 @description('Unique suffix for resource names')
 param suffix string
 
-@description('The name of the virtual network')
-param vnetName string = 'agents-vnet-${suffix}'
+@description('The name of the hub virtual network')
+param hubVnetName string = 'hub-vnet-${suffix}'
+
+@description('The name of the agent virtual network')
+param agentsVnetName string = ''
 
 @description('The name of Agents Subnet')
 param agentsSubnetName string = 'agents-subnet-${suffix}'
 
+@description('The name of PE Agents Subnet')
+param agentsPeSubnetName string = 'agents-pe-subnet-${suffix}'
+
 @description('The name of Hub subnet')
 param hubSubnetName string = 'hub-subnet-${suffix}'
 
-@description('Model/AI Resource deployment location')
-param modelLocation string
+@description('The name of the existing hub virtual network')
+param existingHubVirtualNetworkName string = ''
 
-// Virtual Network with segregated subnets
-resource virtualNetwork 'Microsoft.Network/virtualNetworks@2024-05-01' = {
-  name: vnetName
-  location: location
-  tags: tags
-  properties: {
-    addressSpace: {
-      addressPrefixes: [
-        '172.16.0.0/16'
-      ]
-    }
-    subnets: [
-      {
-        name: hubSubnetName
-        properties: {
-          addressPrefix: '172.16.0.0/24'
-        }
-      }
-      {
-        name: agentsSubnetName
-        properties: {
-          addressPrefix: '172.16.101.0/24'
-          delegations: [
-            {
-              name: 'Microsoft.app/environments'
-              properties: {
-                serviceName: 'Microsoft.App/environments'
-              }
-            }
-          ]
-        }
-      }
-    ]
+@description('The name of the existing virtual network resource group')
+param existingHubVirtualNetworkResourceGroup string = ''
+
+@description('The name of the existing hub virtual network')
+param existingAgentsVirtualNetworkName string = ''
+
+@description('The name of the existing agents virtual network resource group')
+param existingAgentsVirtualNetworkResourceGroup string = ''
+
+@description('Set to true to peer the agents vnet with the hub vnet')
+param usePeering bool = false
+
+var useTwoVnetsSolution = !empty(agentsVnetName) || !empty(existingAgentsVirtualNetworkName)
+
+module vnets 'twoVnets.bicep' = if (useTwoVnetsSolution) {
+  name: 'two-agents-${suffix}-vnets'
+  params: {
+    resourceGroupName: resourceGroupName
+    hubVnetName: hubVnetName
+    existingHubVirtualNetworkName: existingHubVirtualNetworkName
+    existingHubVirtualNetworkResourceGroup: existingHubVirtualNetworkResourceGroup
+    agentsVnetName: agentsVnetName
+    existingAgentsVirtualNetworkName: existingAgentsVirtualNetworkName
+    existingAgentsVirtualNetworkResourceGroup: existingAgentsVirtualNetworkResourceGroup
+    hubSubnetName: hubSubnetName
+    agentsSubnetName: agentsSubnetName
+    agentsPeSubnetName: agentsPeSubnetName
+    location: location
+    tags: tags
+    suffix: suffix
+    usePeering: usePeering
+  }
+}
+
+module vnet 'oneVnet.bicep' = if (!useTwoVnetsSolution) {
+  name: 'one-${suffix}-vnet'
+  scope: resourceGroup(resourceGroupName)
+  params: {
+    hubVnetName: hubVnetName
+    existingHubVirtualNetworkName: existingHubVirtualNetworkName
+    existingHubVirtualNetworkResourceGroup: existingHubVirtualNetworkResourceGroup
+    hubSubnetName: hubSubnetName
+    agentsSubnetName: agentsSubnetName
+    location: location
+    tags: tags
+    suffix: suffix
   }
 }
 
 // Output variables
-output virtualNetworkName string = virtualNetwork.name
-output virtualNetworkId string = virtualNetwork.id
-output hubSubnetName string = hubSubnetName
-output agentsSubnetName string = agentsSubnetName
-output hubSubnetId string = '${virtualNetwork.id}/subnets/${hubSubnetName}'
-output agentsSubnetId string = '${virtualNetwork.id}/subnets/${agentsSubnetName}'
+output hubVirtualNetworkName string = !useTwoVnetsSolution
+  ? vnet.outputs.hubVirtualNetworkName
+  : vnets.outputs.hubVirtualNetworkName
+output hubVirtualNetworkId string = !useTwoVnetsSolution
+  ? vnet.outputs.hubVirtualNetworkId
+  : vnets.outputs.hubVirtualNetworkId
+output agentsVirtualNetworkName string = !useTwoVnetsSolution
+  ? vnet.outputs.agentsVirtualNetworkName
+  : vnets.outputs.agentsVirtualNetworkName
+output agentsVirtualNetworkId string = !useTwoVnetsSolution
+  ? vnet.outputs.agentsVirtualNetworkId
+  : vnets.outputs.agentsVirtualNetworkId
+
+output hubVirtualNetworkResourceGroupName string = !useTwoVnetsSolution
+  ? vnet.outputs.hubVirtualNetworkResourceGroupName
+  : vnets.outputs.hubVirtualNetworkResourceGroupName
+output agentsVirtualNetworkResourceGroupName string = !useTwoVnetsSolution
+  ? vnet.outputs.agentsVirtualNetworkResourceGroupName
+  : vnets.outputs.agentsVirtualNetworkResourceGroupName
+output hubSubnetName string = !useTwoVnetsSolution ? vnet.outputs.hubSubnetName : vnets.outputs.hubSubnetName
+output agentsSubnetName string = !useTwoVnetsSolution ? vnet.outputs.agentsSubnetName : vnets.outputs.agentsSubnetName
+output agentsPeSubnetName string = !useTwoVnetsSolution ? vnet.outputs.agentsPeSubnetName : vnets.outputs.agentsPeSubnetName
+output hubSubnetId string = !useTwoVnetsSolution ? vnet.outputs.hubSubnetId : vnets.outputs.hubSubnetId
+output agentsSubnetId string = !useTwoVnetsSolution ? vnet.outputs.agentsSubnetId : vnets.outputs.agentsSubnetId
+output agentsPeSubnetId string = !useTwoVnetsSolution ? vnet.outputs.agentsPeSubnetId : vnets.outputs.agentsPeSubnetId
+output useTwoVnetsSolution bool = useTwoVnetsSolution
