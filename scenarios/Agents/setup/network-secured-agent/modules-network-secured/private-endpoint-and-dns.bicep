@@ -54,6 +54,7 @@ param hubWorkspaceName string
 param aiResourceGroupName string = resourceGroup().name
 
 param createDnsZones bool = true
+param createDnsZoneGroups bool = true
 
 // Reference existing services that need private endpoints
 resource aiServices 'Microsoft.CognitiveServices/accounts@2023-05-01' existing = {
@@ -213,7 +214,7 @@ resource openAiPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = i
 }
 
 // DNS Zone Group for AI Services
-resource aiServicesDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (createDnsZones) {
+resource aiServicesDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (createDnsZoneGroups) {
   parent: aiServicesPrivateEndpoint
   name: '${aiServicesName}-dns-group'
   properties: {
@@ -229,7 +230,7 @@ resource aiServicesDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGr
 }
 
 // DNS Zone Group for Azure OpenAI
-resource aiOpenAIDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (createDnsZones) {
+resource aiOpenAIDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (createDnsZoneGroups) {
   parent: aiServiceOpenAiPrivateEndpoint
   name: '${aiServicesName}-openAi-dns-group'
   properties: {
@@ -256,7 +257,7 @@ resource mlNotebooksPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01
   location: 'global'
 }
 
-resource hubWorkspacePrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01' = if (createDnsZones) {
+resource hubWorkspacePrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01' = if (createDnsZoneGroups) {
   parent: hubWorkspacePrivateEndpoint
   name: '${hubWorkspaceName}-mlApiNotebook-dns-group'
   properties: {
@@ -285,7 +286,7 @@ resource aiSearchPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' =
 }
 
 // DNS Zone Group for AI Search
-resource aiSearchDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (createDnsZones) {
+resource aiSearchDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (createDnsZoneGroups) {
   parent: aiSearchPrivateEndpoint
   name: '${aiSearchName}-dns-group'
   properties: {
@@ -308,7 +309,7 @@ resource storagePrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = 
 }
 
 // DNS Zone Group for Storage
-resource storageDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (createDnsZones) {
+resource storageDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (createDnsZoneGroups) {
   parent: storagePrivateEndpoint
   name: '${storageName}-dns-group'
   properties: {

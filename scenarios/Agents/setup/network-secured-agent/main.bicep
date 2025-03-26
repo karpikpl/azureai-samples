@@ -165,6 +165,8 @@ var useTwoVnetsSolution = !empty(agentsVnetName) || !empty(existingAgentsVirtual
 
 @description('When true, the module will create private DNS zones and link them to the VNet. When false, it will not create any DNS zones.')
 param createDnsZones bool = true
+@description('When true, the module will create DNS Zone Groups for all private endpoints. Set to false, when DNS configuration is done via policy.')
+param createDnsZoneGroups bool = true
 
 // @description('The Ai Storage Account name. This is an optional field, and if not provided, the resource will be created.The resource should exist in same resource group')
 // param aiStorageAccountName string = ''
@@ -262,7 +264,7 @@ module aiHub 'modules-network-secured/network-secured-ai-hub.bicep' = {
   scope: rg
   params: {
     // workspace organization
-    aiHubName: '${defaultAiHubName}-${uniqueSuffix}'
+    aiHubName: defaultAiHubName
     aiHubFriendlyName: defaultAiHubFriendlyName
     aiHubDescription: defaultAiHubDescription
     location: location
@@ -325,7 +327,8 @@ module privateEndpointAndDNS 'modules-network-secured/private-endpoint-and-dns.b
     suffix: uniqueSuffix                                    // Unique identifier
     hubWorkspaceId: aiHub.outputs.aiHubID                   // AI Hub workspace ID
     hubWorkspaceName: aiHub.outputs.aiHubName               // AI Hub workspace name
-    createDnsZones: createDnsZones // Flag to create DNS zones
+    createDnsZones: createDnsZones // Flag to create DNS zones and VNET links
+    createDnsZoneGroups: createDnsZoneGroups
   }
   dependsOn: [
     aiServices    // Ensure AI Services exist
@@ -350,6 +353,7 @@ module privateEndpointAndDNSForAgents 'modules-network-secured/private-endpoint-
     hubWorkspaceId: aiHub.outputs.aiHubID                   // AI Hub workspace ID
     hubWorkspaceName: aiHub.outputs.aiHubName               // AI Hub workspace name
     createDnsZones: createDnsZones // Flag to create DNS zones
+    createDnsZoneGroups: createDnsZoneGroups
   }
   dependsOn: [
     aiServices    // Ensure AI Services exist

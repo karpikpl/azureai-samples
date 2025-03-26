@@ -77,6 +77,9 @@ Since it's hard to replicate central DNS or express route, deployment creates 2 
         "value": "eastus2"
       },
       "createDnsZones": {
+        "value": false
+      },
+      "createDnsZoneGroups": {
         "value": true
       },
       "usePeering": {

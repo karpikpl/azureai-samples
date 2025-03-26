@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.33.93.31351",
-      "templateHash": "18089321848999095655"
+      "version": "0.34.1.11899",
+      "templateHash": "12276218563676988094"
     }
   },
   "parameters": {
@@ -135,7 +135,7 @@
     },
     "defaultCapabilityHostName": {
       "type": "string",
-      "defaultValue": "caphost1",
+      "defaultValue": "AgentsCapHost",
       "metadata": {
         "description": "Name for capabilityHost."
       }
@@ -184,7 +184,7 @@
     },
     "modelCapacity": {
       "type": "int",
-      "defaultValue": 50,
+      "defaultValue": 1000,
       "metadata": {
         "description": "Model deployment capacity"
       }
@@ -273,11 +273,25 @@
         "description": "The name of the existing agents virtual network resource group. Agents subnet should be in the same resource group as the hub."
       }
     },
+    "usePeering": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Set to true to peer the agents vnet with the hub vnet"
+      }
+    },
     "createDnsZones": {
       "type": "bool",
       "defaultValue": true,
       "metadata": {
         "description": "When true, the module will create private DNS zones and link them to the VNet. When false, it will not create any DNS zones."
+      }
+    },
+    "createDnsZoneGroups": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "When true, the module will create DNS Zone Groups for all private endpoints. Set to false, when DNS configuration is done via policy."
       }
     },
     "userAssignedIdentityDefaultName": {
@@ -303,6 +317,13 @@
       "type": "Microsoft.Resources/resourceGroups",
       "apiVersion": "2021-04-01",
       "name": "[parameters('resourceGroupName')]",
+      "location": "[parameters('resourceGroupLocation')]"
+    },
+    {
+      "condition": "[and(variables('useTwoVnetsSolution'), not(parameters('usePeering')))]",
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2021-04-01",
+      "name": "[parameters('agentNetworkingResourceGroupName')]",
       "location": "[parameters('resourceGroupLocation')]"
     },
     {
@@ -332,8 +353,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.33.93.31351",
-              "templateHash": "15872236774552793157"
+              "version": "0.34.1.11899",
+              "templateHash": "395488084072784734"
             }
           },
           "parameters": {
@@ -435,6 +456,9 @@
           },
           "suffix": {
             "value": "[parameters('uniqueSuffix')]"
+          },
+          "usePeering": {
+            "value": "[parameters('usePeering')]"
           }
         },
         "template": {
@@ -443,8 +467,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.33.93.31351",
-              "templateHash": "12478738209610199399"
+              "version": "0.34.1.11899",
+              "templateHash": "5455875097454809626"
             }
           },
           "parameters": {
@@ -535,6 +559,13 @@
               "metadata": {
                 "description": "The name of the existing agents virtual network resource group"
               }
+            },
+            "usePeering": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Set to true to peer the agents vnet with the hub vnet"
+              }
             }
           },
           "variables": {
@@ -545,7 +576,7 @@
               "condition": "[variables('useTwoVnetsSolution')]",
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2022-09-01",
-              "name": "[format('agents-{0}--vnets', parameters('suffix'))]",
+              "name": "[format('two-agents-{0}-vnets', parameters('suffix'))]",
               "location": "[deployment().location]",
               "properties": {
                 "expressionEvaluationOptions": {
@@ -591,6 +622,9 @@
                   },
                   "suffix": {
                     "value": "[parameters('suffix')]"
+                  },
+                  "usePeering": {
+                    "value": "[parameters('usePeering')]"
                   }
                 },
                 "template": {
@@ -599,8 +633,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.33.93.31351",
-                      "templateHash": "10377152177242145061"
+                      "version": "0.34.1.11899",
+                      "templateHash": "7749760262769312549"
                     }
                   },
                   "parameters": {
@@ -691,6 +725,13 @@
                       "metadata": {
                         "description": "The name of the existing agents virtual network resource group"
                       }
+                    },
+                    "usePeering": {
+                      "type": "bool",
+                      "defaultValue": false,
+                      "metadata": {
+                        "description": "Set to true to peer the agents vnet with the hub vnet"
+                      }
                     }
                   },
                   "variables": {
@@ -705,7 +746,7 @@
                       "condition": "[empty(parameters('existingHubVirtualNetworkName'))]",
                       "type": "Microsoft.Resources/deployments",
                       "apiVersion": "2022-09-01",
-                      "name": "[format('hub-vnet-{0}', parameters('suffix'))]",
+                      "name": "[parameters('hubVnetName')]",
                       "resourceGroup": "[variables('hubVnetRg')]",
                       "properties": {
                         "expressionEvaluationOptions": {
@@ -743,8 +784,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.33.93.31351",
-                              "templateHash": "4620802537271304827"
+                              "version": "0.34.1.11899",
+                              "templateHash": "5572193083516773211"
                             }
                           },
                           "parameters": {
@@ -771,6 +812,10 @@
                               "items": {
                                 "type": "object"
                               }
+                            },
+                            "peerToNetworkName": {
+                              "type": "string",
+                              "defaultValue": ""
                             }
                           },
                           "resources": {
@@ -788,6 +833,43 @@
                                 },
                                 "subnets": "[parameters('subnets')]"
                               }
+                            },
+                            "otherVnet": {
+                              "condition": "[not(empty(parameters('peerToNetworkName')))]",
+                              "existing": true,
+                              "type": "Microsoft.Network/virtualNetworks",
+                              "apiVersion": "2024-05-01",
+                              "name": "[parameters('peerToNetworkName')]"
+                            },
+                            "toVnetPeering": {
+                              "condition": "[not(empty(parameters('peerToNetworkName')))]",
+                              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+                              "apiVersion": "2024-05-01",
+                              "name": "[format('{0}/{1}', parameters('name'), format('{0}-to-{1}', parameters('name'), parameters('peerToNetworkName')))]",
+                              "properties": {
+                                "allowVirtualNetworkAccess": true,
+                                "remoteVirtualNetwork": {
+                                  "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('peerToNetworkName'))]"
+                                }
+                              },
+                              "dependsOn": [
+                                "vnet"
+                              ]
+                            },
+                            "fromVnetPeering": {
+                              "condition": "[not(empty(parameters('peerToNetworkName')))]",
+                              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+                              "apiVersion": "2024-05-01",
+                              "name": "[format('{0}/{1}', parameters('peerToNetworkName'), format('{0}-to-{1}', parameters('peerToNetworkName'), parameters('name')))]",
+                              "properties": {
+                                "allowVirtualNetworkAccess": true,
+                                "remoteVirtualNetwork": {
+                                  "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('name'))]"
+                                }
+                              },
+                              "dependsOn": [
+                                "vnet"
+                              ]
                             }
                           },
                           "outputs": {
@@ -814,7 +896,7 @@
                       "condition": "[empty(parameters('existingAgentsVirtualNetworkName'))]",
                       "type": "Microsoft.Resources/deployments",
                       "apiVersion": "2022-09-01",
-                      "name": "[format('agents-vnet-{0}', parameters('suffix'))]",
+                      "name": "[parameters('agentsVnetName')]",
                       "resourceGroup": "[variables('agentsVnetRg')]",
                       "properties": {
                         "expressionEvaluationOptions": {
@@ -831,6 +913,7 @@
                           "tags": {
                             "value": "[parameters('tags')]"
                           },
+                          "peerToNetworkName": "[if(parameters('usePeering'), createObject('value', reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('hubVnetRg')), 'Microsoft.Resources/deployments', parameters('hubVnetName')), '2022-09-01').outputs.name.value), createObject('value', ''))]",
                           "addressPrefixes": {
                             "value": "172.17.0.0/23"
                           },
@@ -866,8 +949,8 @@
                           "metadata": {
                             "_generator": {
                               "name": "bicep",
-                              "version": "0.33.93.31351",
-                              "templateHash": "4620802537271304827"
+                              "version": "0.34.1.11899",
+                              "templateHash": "5572193083516773211"
                             }
                           },
                           "parameters": {
@@ -894,6 +977,10 @@
                               "items": {
                                 "type": "object"
                               }
+                            },
+                            "peerToNetworkName": {
+                              "type": "string",
+                              "defaultValue": ""
                             }
                           },
                           "resources": {
@@ -911,6 +998,43 @@
                                 },
                                 "subnets": "[parameters('subnets')]"
                               }
+                            },
+                            "otherVnet": {
+                              "condition": "[not(empty(parameters('peerToNetworkName')))]",
+                              "existing": true,
+                              "type": "Microsoft.Network/virtualNetworks",
+                              "apiVersion": "2024-05-01",
+                              "name": "[parameters('peerToNetworkName')]"
+                            },
+                            "toVnetPeering": {
+                              "condition": "[not(empty(parameters('peerToNetworkName')))]",
+                              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+                              "apiVersion": "2024-05-01",
+                              "name": "[format('{0}/{1}', parameters('name'), format('{0}-to-{1}', parameters('name'), parameters('peerToNetworkName')))]",
+                              "properties": {
+                                "allowVirtualNetworkAccess": true,
+                                "remoteVirtualNetwork": {
+                                  "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('peerToNetworkName'))]"
+                                }
+                              },
+                              "dependsOn": [
+                                "vnet"
+                              ]
+                            },
+                            "fromVnetPeering": {
+                              "condition": "[not(empty(parameters('peerToNetworkName')))]",
+                              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+                              "apiVersion": "2024-05-01",
+                              "name": "[format('{0}/{1}', parameters('peerToNetworkName'), format('{0}-to-{1}', parameters('peerToNetworkName'), parameters('name')))]",
+                              "properties": {
+                                "allowVirtualNetworkAccess": true,
+                                "remoteVirtualNetwork": {
+                                  "id": "[resourceId('Microsoft.Network/virtualNetworks', parameters('name'))]"
+                                }
+                              },
+                              "dependsOn": [
+                                "vnet"
+                              ]
                             }
                           },
                           "outputs": {
@@ -931,25 +1055,28 @@
                             }
                           }
                         }
-                      }
+                      },
+                      "dependsOn": [
+                        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('hubVnetRg')), 'Microsoft.Resources/deployments', parameters('hubVnetName'))]"
+                      ]
                     }
                   ],
                   "outputs": {
                     "hubVirtualNetworkName": {
                       "type": "string",
-                      "value": "[if(not(empty(parameters('existingHubVirtualNetworkName'))), parameters('existingHubVirtualNetworkName'), format('hub-vnet-{0}', parameters('suffix')))]"
+                      "value": "[if(not(empty(parameters('existingHubVirtualNetworkName'))), parameters('existingHubVirtualNetworkName'), parameters('hubVnetName'))]"
                     },
                     "hubVirtualNetworkId": {
                       "type": "string",
-                      "value": "[if(not(empty(parameters('existingHubVirtualNetworkName'))), extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('hubVnetRg')), 'Microsoft.Network/virtualNetworks', parameters('existingHubVirtualNetworkName')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('hubVnetRg')), 'Microsoft.Resources/deployments', format('hub-vnet-{0}', parameters('suffix'))), '2022-09-01').outputs.id.value)]"
+                      "value": "[if(not(empty(parameters('existingHubVirtualNetworkName'))), extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('hubVnetRg')), 'Microsoft.Network/virtualNetworks', parameters('existingHubVirtualNetworkName')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('hubVnetRg')), 'Microsoft.Resources/deployments', parameters('hubVnetName')), '2022-09-01').outputs.id.value)]"
                     },
                     "agentsVirtualNetworkName": {
                       "type": "string",
-                      "value": "[if(not(empty(parameters('existingAgentsVirtualNetworkName'))), parameters('existingAgentsVirtualNetworkName'), format('agents-vnet-{0}', parameters('suffix')))]"
+                      "value": "[if(not(empty(parameters('existingAgentsVirtualNetworkName'))), parameters('existingAgentsVirtualNetworkName'), parameters('agentsVnetName'))]"
                     },
                     "agentsVirtualNetworkId": {
                       "type": "string",
-                      "value": "[if(not(empty(parameters('existingAgentsVirtualNetworkName'))), extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('agentsVnetRg')), 'Microsoft.Network/virtualNetworks', parameters('existingAgentsVirtualNetworkName')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('agentsVnetRg')), 'Microsoft.Resources/deployments', format('agents-vnet-{0}', parameters('suffix'))), '2022-09-01').outputs.id.value)]"
+                      "value": "[if(not(empty(parameters('existingAgentsVirtualNetworkName'))), extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('agentsVnetRg')), 'Microsoft.Network/virtualNetworks', parameters('existingAgentsVirtualNetworkName')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('agentsVnetRg')), 'Microsoft.Resources/deployments', parameters('agentsVnetName')), '2022-09-01').outputs.id.value)]"
                     },
                     "hubVirtualNetworkResourceGroupName": {
                       "type": "string",
@@ -973,15 +1100,15 @@
                     },
                     "hubSubnetId": {
                       "type": "string",
-                      "value": "[if(not(empty(parameters('existingHubVirtualNetworkName'))), extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('hubVnetRg')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingHubVirtualNetworkName'), variables('_hubSubnetName')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('hubVnetRg')), 'Microsoft.Resources/deployments', format('hub-vnet-{0}', parameters('suffix'))), '2022-09-01').outputs.subnetIds.value[0])]"
+                      "value": "[if(not(empty(parameters('existingHubVirtualNetworkName'))), extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('hubVnetRg')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingHubVirtualNetworkName'), variables('_hubSubnetName')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('hubVnetRg')), 'Microsoft.Resources/deployments', parameters('hubVnetName')), '2022-09-01').outputs.subnetIds.value[0])]"
                     },
                     "agentsSubnetId": {
                       "type": "string",
-                      "value": "[if(not(empty(parameters('existingAgentsVirtualNetworkName'))), extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('agentsVnetRg')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingAgentsVirtualNetworkName'), variables('_agentsSubnetName')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('agentsVnetRg')), 'Microsoft.Resources/deployments', format('agents-vnet-{0}', parameters('suffix'))), '2022-09-01').outputs.subnetIds.value[0])]"
+                      "value": "[if(not(empty(parameters('existingAgentsVirtualNetworkName'))), extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('agentsVnetRg')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingAgentsVirtualNetworkName'), variables('_agentsSubnetName')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('agentsVnetRg')), 'Microsoft.Resources/deployments', parameters('agentsVnetName')), '2022-09-01').outputs.subnetIds.value[0])]"
                     },
                     "agentsPeSubnetId": {
                       "type": "string",
-                      "value": "[if(not(empty(parameters('existingAgentsVirtualNetworkName'))), extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('agentsVnetRg')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingAgentsVirtualNetworkName'), variables('_agentsPeSubnetName')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('agentsVnetRg')), 'Microsoft.Resources/deployments', format('agents-vnet-{0}', parameters('suffix'))), '2022-09-01').outputs.subnetIds.value[1])]"
+                      "value": "[if(not(empty(parameters('existingAgentsVirtualNetworkName'))), extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('agentsVnetRg')), 'Microsoft.Network/virtualNetworks/subnets', parameters('existingAgentsVirtualNetworkName'), variables('_agentsPeSubnetName')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('agentsVnetRg')), 'Microsoft.Resources/deployments', parameters('agentsVnetName')), '2022-09-01').outputs.subnetIds.value[1])]"
                     }
                   }
                 }
@@ -991,7 +1118,7 @@
               "condition": "[not(variables('useTwoVnetsSolution'))]",
               "type": "Microsoft.Resources/deployments",
               "apiVersion": "2022-09-01",
-              "name": "[format('one-{0}--vnet', parameters('suffix'))]",
+              "name": "[format('one-{0}-vnet', parameters('suffix'))]",
               "resourceGroup": "[parameters('resourceGroupName')]",
               "properties": {
                 "expressionEvaluationOptions": {
@@ -1030,8 +1157,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.33.93.31351",
-                      "templateHash": "5266936145873785622"
+                      "version": "0.34.1.11899",
+                      "templateHash": "11529745289021847554"
                     }
                   },
                   "parameters": {
@@ -1193,51 +1320,55 @@
           "outputs": {
             "hubVirtualNetworkName": {
               "type": "string",
-              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}--vnet', parameters('suffix'))), '2022-09-01').outputs.hubVirtualNetworkName.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('agents-{0}--vnets', parameters('suffix'))), '2022-09-01').outputs.hubVirtualNetworkName.value)]"
+              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}-vnet', parameters('suffix'))), '2022-09-01').outputs.hubVirtualNetworkName.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('two-agents-{0}-vnets', parameters('suffix'))), '2022-09-01').outputs.hubVirtualNetworkName.value)]"
             },
             "hubVirtualNetworkId": {
               "type": "string",
-              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}--vnet', parameters('suffix'))), '2022-09-01').outputs.hubVirtualNetworkId.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('agents-{0}--vnets', parameters('suffix'))), '2022-09-01').outputs.hubVirtualNetworkId.value)]"
+              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}-vnet', parameters('suffix'))), '2022-09-01').outputs.hubVirtualNetworkId.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('two-agents-{0}-vnets', parameters('suffix'))), '2022-09-01').outputs.hubVirtualNetworkId.value)]"
             },
             "agentsVirtualNetworkName": {
               "type": "string",
-              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}--vnet', parameters('suffix'))), '2022-09-01').outputs.agentsVirtualNetworkName.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('agents-{0}--vnets', parameters('suffix'))), '2022-09-01').outputs.agentsVirtualNetworkName.value)]"
+              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}-vnet', parameters('suffix'))), '2022-09-01').outputs.agentsVirtualNetworkName.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('two-agents-{0}-vnets', parameters('suffix'))), '2022-09-01').outputs.agentsVirtualNetworkName.value)]"
             },
             "agentsVirtualNetworkId": {
               "type": "string",
-              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}--vnet', parameters('suffix'))), '2022-09-01').outputs.agentsVirtualNetworkId.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('agents-{0}--vnets', parameters('suffix'))), '2022-09-01').outputs.agentsVirtualNetworkId.value)]"
+              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}-vnet', parameters('suffix'))), '2022-09-01').outputs.agentsVirtualNetworkId.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('two-agents-{0}-vnets', parameters('suffix'))), '2022-09-01').outputs.agentsVirtualNetworkId.value)]"
             },
             "hubVirtualNetworkResourceGroupName": {
               "type": "string",
-              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}--vnet', parameters('suffix'))), '2022-09-01').outputs.hubVirtualNetworkResourceGroupName.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('agents-{0}--vnets', parameters('suffix'))), '2022-09-01').outputs.hubVirtualNetworkResourceGroupName.value)]"
+              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}-vnet', parameters('suffix'))), '2022-09-01').outputs.hubVirtualNetworkResourceGroupName.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('two-agents-{0}-vnets', parameters('suffix'))), '2022-09-01').outputs.hubVirtualNetworkResourceGroupName.value)]"
             },
             "agentsVirtualNetworkResourceGroupName": {
               "type": "string",
-              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}--vnet', parameters('suffix'))), '2022-09-01').outputs.agentsVirtualNetworkResourceGroupName.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('agents-{0}--vnets', parameters('suffix'))), '2022-09-01').outputs.agentsVirtualNetworkResourceGroupName.value)]"
+              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}-vnet', parameters('suffix'))), '2022-09-01').outputs.agentsVirtualNetworkResourceGroupName.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('two-agents-{0}-vnets', parameters('suffix'))), '2022-09-01').outputs.agentsVirtualNetworkResourceGroupName.value)]"
             },
             "hubSubnetName": {
               "type": "string",
-              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}--vnet', parameters('suffix'))), '2022-09-01').outputs.hubSubnetName.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('agents-{0}--vnets', parameters('suffix'))), '2022-09-01').outputs.hubSubnetName.value)]"
+              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}-vnet', parameters('suffix'))), '2022-09-01').outputs.hubSubnetName.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('two-agents-{0}-vnets', parameters('suffix'))), '2022-09-01').outputs.hubSubnetName.value)]"
             },
             "agentsSubnetName": {
               "type": "string",
-              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}--vnet', parameters('suffix'))), '2022-09-01').outputs.agentsSubnetName.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('agents-{0}--vnets', parameters('suffix'))), '2022-09-01').outputs.agentsSubnetName.value)]"
+              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}-vnet', parameters('suffix'))), '2022-09-01').outputs.agentsSubnetName.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('two-agents-{0}-vnets', parameters('suffix'))), '2022-09-01').outputs.agentsSubnetName.value)]"
             },
             "agentsPeSubnetName": {
               "type": "string",
-              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}--vnet', parameters('suffix'))), '2022-09-01').outputs.agentsPeSubnetName.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('agents-{0}--vnets', parameters('suffix'))), '2022-09-01').outputs.agentsPeSubnetName.value)]"
+              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}-vnet', parameters('suffix'))), '2022-09-01').outputs.agentsPeSubnetName.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('two-agents-{0}-vnets', parameters('suffix'))), '2022-09-01').outputs.agentsPeSubnetName.value)]"
             },
             "hubSubnetId": {
               "type": "string",
-              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}--vnet', parameters('suffix'))), '2022-09-01').outputs.hubSubnetId.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('agents-{0}--vnets', parameters('suffix'))), '2022-09-01').outputs.hubSubnetId.value)]"
+              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}-vnet', parameters('suffix'))), '2022-09-01').outputs.hubSubnetId.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('two-agents-{0}-vnets', parameters('suffix'))), '2022-09-01').outputs.hubSubnetId.value)]"
             },
             "agentsSubnetId": {
               "type": "string",
-              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}--vnet', parameters('suffix'))), '2022-09-01').outputs.agentsSubnetId.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('agents-{0}--vnets', parameters('suffix'))), '2022-09-01').outputs.agentsSubnetId.value)]"
+              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}-vnet', parameters('suffix'))), '2022-09-01').outputs.agentsSubnetId.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('two-agents-{0}-vnets', parameters('suffix'))), '2022-09-01').outputs.agentsSubnetId.value)]"
             },
             "agentsPeSubnetId": {
               "type": "string",
-              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}--vnet', parameters('suffix'))), '2022-09-01').outputs.agentsPeSubnetId.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('agents-{0}--vnets', parameters('suffix'))), '2022-09-01').outputs.agentsPeSubnetId.value)]"
+              "value": "[if(not(variables('useTwoVnetsSolution')), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('one-{0}-vnet', parameters('suffix'))), '2022-09-01').outputs.agentsPeSubnetId.value, reference(subscriptionResourceId('Microsoft.Resources/deployments', format('two-agents-{0}-vnets', parameters('suffix'))), '2022-09-01').outputs.agentsPeSubnetId.value)]"
+            },
+            "useTwoVnetsSolution": {
+              "type": "bool",
+              "value": "[variables('useTwoVnetsSolution')]"
             }
           }
         }
@@ -1315,8 +1446,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.33.93.31351",
-              "templateHash": "12473094046332996300"
+              "version": "0.34.1.11899",
+              "templateHash": "6853271966172127347"
             }
           },
           "parameters": {
@@ -1630,8 +1761,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.33.93.31351",
-                      "templateHash": "1498445684207187922"
+                      "version": "0.34.1.11899",
+                      "templateHash": "9439333864650214270"
                     }
                   },
                   "parameters": {
@@ -1713,8 +1844,8 @@
                   "metadata": {
                     "_generator": {
                       "name": "bicep",
-                      "version": "0.33.93.31351",
-                      "templateHash": "6274162434845500752"
+                      "version": "0.34.1.11899",
+                      "templateHash": "5774835370110600971"
                     }
                   },
                   "parameters": {
@@ -1916,8 +2047,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.33.93.31351",
-              "templateHash": "15229829833658622658"
+              "version": "0.34.1.11899",
+              "templateHash": "12503246873519312478"
             }
           },
           "parameters": {
@@ -2180,6 +2311,9 @@
           },
           "createDnsZones": {
             "value": "[parameters('createDnsZones')]"
+          },
+          "createDnsZoneGroups": {
+            "value": "[parameters('createDnsZoneGroups')]"
           }
         },
         "template": {
@@ -2188,8 +2322,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.33.93.31351",
-              "templateHash": "15962559329896701293"
+              "version": "0.34.1.11899",
+              "templateHash": "2717263324290954196"
             }
           },
           "parameters": {
@@ -2254,7 +2388,18 @@
                 "description": "Name of the Customer Hub Workspace"
               }
             },
+            "aiResourceGroupName": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().name]",
+              "metadata": {
+                "description": "Name of the resource group for the AI dependent services"
+              }
+            },
             "createDnsZones": {
+              "type": "bool",
+              "defaultValue": true
+            },
+            "createDnsZoneGroups": {
               "type": "bool",
               "defaultValue": true
             }
@@ -2273,7 +2418,7 @@
                   {
                     "name": "[format('{0}-private-link-service-connection', parameters('aiServicesName'))]",
                     "properties": {
-                      "privateLinkServiceId": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiServicesName'))]",
+                      "privateLinkServiceId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('aiResourceGroupName')), 'Microsoft.CognitiveServices/accounts', parameters('aiServicesName'))]",
                       "groupIds": [
                         "account"
                       ]
@@ -2295,7 +2440,7 @@
                   {
                     "name": "[format('{0}-openAi-private-link-service-connection', parameters('aiServicesName'))]",
                     "properties": {
-                      "privateLinkServiceId": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiServicesName'))]",
+                      "privateLinkServiceId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('aiResourceGroupName')), 'Microsoft.CognitiveServices/accounts', parameters('aiServicesName'))]",
                       "groupIds": [
                         "account"
                       ]
@@ -2317,7 +2462,7 @@
                   {
                     "name": "[format('{0}-private-link-service-connection', parameters('aiSearchName'))]",
                     "properties": {
-                      "privateLinkServiceId": "[resourceId('Microsoft.Search/searchServices', parameters('aiSearchName'))]",
+                      "privateLinkServiceId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('aiResourceGroupName')), 'Microsoft.Search/searchServices', parameters('aiSearchName'))]",
                       "groupIds": [
                         "searchService"
                       ]
@@ -2385,39 +2530,7 @@
               "location": "global"
             },
             {
-              "condition": "[parameters('createDnsZones')]",
-              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-              "apiVersion": "2024-06-01",
-              "name": "[format('{0}/{1}', 'privatelink.azureml.ms', format('aiServices-{0}-link', parameters('suffix')))]",
-              "location": "global",
-              "properties": {
-                "virtualNetwork": {
-                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
-                },
-                "registrationEnabled": false
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azureml.ms')]"
-              ]
-            },
-            {
-              "condition": "[parameters('createDnsZones')]",
-              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-              "apiVersion": "2024-06-01",
-              "name": "[format('{0}/{1}', 'privatelink.openai.azure.com', format('aiServicesOpenAI-{0}-link', parameters('suffix')))]",
-              "location": "global",
-              "properties": {
-                "virtualNetwork": {
-                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
-                },
-                "registrationEnabled": false
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.openai.azure.com')]"
-              ]
-            },
-            {
-              "condition": "[parameters('createDnsZones')]",
+              "condition": "[parameters('createDnsZoneGroups')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}/{1}', format('{0}-{1}-private-endpoint', parameters('aiServicesName'), parameters('suffix')), format('{0}-dns-group', parameters('aiServicesName')))]",
@@ -2432,13 +2545,12 @@
                 ]
               },
               "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', 'privatelink.azureml.ms', format('aiServices-{0}-link', parameters('suffix')))]",
                 "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azureml.ms')]",
                 "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-{1}-private-endpoint', parameters('aiServicesName'), parameters('suffix')))]"
               ]
             },
             {
-              "condition": "[parameters('createDnsZones')]",
+              "condition": "[parameters('createDnsZoneGroups')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}/{1}', format('{0}-{1}-openAi-private-endpoint', parameters('aiServicesName'), parameters('suffix')), format('{0}-openAi-dns-group', parameters('aiServicesName')))]",
@@ -2453,7 +2565,6 @@
                 ]
               },
               "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', 'privatelink.openai.azure.com', format('aiServicesOpenAI-{0}-link', parameters('suffix')))]",
                 "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-{1}-openAi-private-endpoint', parameters('aiServicesName'), parameters('suffix')))]",
                 "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.openai.azure.com')]"
               ]
@@ -2473,39 +2584,7 @@
               "location": "global"
             },
             {
-              "condition": "[parameters('createDnsZones')]",
-              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-              "apiVersion": "2020-06-01",
-              "name": "[format('{0}/{1}', 'privatelink.api.azureml.ms', format('mlApi-{0}-link', parameters('suffix')))]",
-              "location": "global",
-              "properties": {
-                "registrationEnabled": false,
-                "virtualNetwork": {
-                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
-                }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.api.azureml.ms')]"
-              ]
-            },
-            {
-              "condition": "[parameters('createDnsZones')]",
-              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-              "apiVersion": "2020-06-01",
-              "name": "[format('{0}/{1}', 'privatelink.notebooksazureml.net', format('mlNotebook-{0}-link', parameters('suffix')))]",
-              "location": "global",
-              "properties": {
-                "registrationEnabled": false,
-                "virtualNetwork": {
-                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
-                }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.notebooksazureml.net')]"
-              ]
-            },
-            {
-              "condition": "[parameters('createDnsZones')]",
+              "condition": "[parameters('createDnsZoneGroups')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2023-11-01",
               "name": "[format('{0}/{1}', format('{0}-{1}-private-endpoint', parameters('hubWorkspaceName'), parameters('suffix')), format('{0}-mlApiNotebook-dns-group', parameters('hubWorkspaceName')))]",
@@ -2528,9 +2607,7 @@
               "dependsOn": [
                 "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-{1}-private-endpoint', parameters('hubWorkspaceName'), parameters('suffix')))]",
                 "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.api.azureml.ms')]",
-                "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', 'privatelink.api.azureml.ms', format('mlApi-{0}-link', parameters('suffix')))]",
-                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.notebooksazureml.net')]",
-                "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', 'privatelink.notebooksazureml.net', format('mlNotebook-{0}-link', parameters('suffix')))]"
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.notebooksazureml.net')]"
               ]
             },
             {
@@ -2541,23 +2618,7 @@
               "location": "global"
             },
             {
-              "condition": "[parameters('createDnsZones')]",
-              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-              "apiVersion": "2024-06-01",
-              "name": "[format('{0}/{1}', 'privatelink.search.windows.net', format('aiSearch-{0}-link', parameters('suffix')))]",
-              "location": "global",
-              "properties": {
-                "virtualNetwork": {
-                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
-                },
-                "registrationEnabled": false
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.search.windows.net')]"
-              ]
-            },
-            {
-              "condition": "[parameters('createDnsZones')]",
+              "condition": "[parameters('createDnsZoneGroups')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}/{1}', format('{0}-{1}-private-endpoint', parameters('aiSearchName'), parameters('suffix')), format('{0}-dns-group', parameters('aiSearchName')))]",
@@ -2584,23 +2645,7 @@
               "location": "global"
             },
             {
-              "condition": "[parameters('createDnsZones')]",
-              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-              "apiVersion": "2024-06-01",
-              "name": "[format('{0}/{1}', format('privatelink.blob.{0}', environment().suffixes.storage), format('storage-{0}-link', parameters('suffix')))]",
-              "location": "global",
-              "properties": {
-                "virtualNetwork": {
-                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
-                },
-                "registrationEnabled": false
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]"
-              ]
-            },
-            {
-              "condition": "[parameters('createDnsZones')]",
+              "condition": "[parameters('createDnsZoneGroups')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}/{1}', format('{0}-{1}-private-endpoint', parameters('storageName'), parameters('suffix')), format('{0}-dns-group', parameters('storageName')))]",
@@ -2618,6 +2663,198 @@
                 "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]",
                 "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-{1}-private-endpoint', parameters('storageName'), parameters('suffix')))]"
               ]
+            },
+            {
+              "condition": "[parameters('createDnsZones')]",
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2022-09-01",
+              "name": "[format('dns-zone-links-for-{0}', parameters('vnetName'))]",
+              "resourceGroup": "[parameters('vnetResourceGroupName')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "vnetName": {
+                    "value": "[parameters('vnetName')]"
+                  },
+                  "vnetResourceGroupName": {
+                    "value": "[parameters('vnetResourceGroupName')]"
+                  },
+                  "suffix": {
+                    "value": "[parameters('suffix')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.34.1.11899",
+                      "templateHash": "16953869379116855263"
+                    }
+                  },
+                  "parameters": {
+                    "vnetName": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Name of the Vnet"
+                      }
+                    },
+                    "vnetResourceGroupName": {
+                      "type": "string",
+                      "defaultValue": "[resourceGroup().name]",
+                      "metadata": {
+                        "description": "Name of the Vner Resource Group"
+                      }
+                    },
+                    "suffix": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Suffix for unique resource names"
+                      }
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Network/privateDnsZones",
+                      "apiVersion": "2020-06-01",
+                      "name": "privatelink.azureml.ms",
+                      "location": "global"
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones",
+                      "apiVersion": "2020-06-01",
+                      "name": "privatelink.openai.azure.com",
+                      "location": "global"
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones",
+                      "apiVersion": "2020-06-01",
+                      "name": "privatelink.api.azureml.ms",
+                      "location": "global"
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones",
+                      "apiVersion": "2020-06-01",
+                      "name": "privatelink.notebooksazureml.net",
+                      "location": "global"
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones",
+                      "apiVersion": "2020-06-01",
+                      "name": "privatelink.search.windows.net",
+                      "location": "global"
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones",
+                      "apiVersion": "2020-06-01",
+                      "name": "[format('privatelink.blob.{0}', environment().suffixes.storage)]",
+                      "location": "global"
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2024-06-01",
+                      "name": "[format('{0}/{1}', 'privatelink.azureml.ms', format('aiServices-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+                      "location": "global",
+                      "properties": {
+                        "virtualNetwork": {
+                          "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                        },
+                        "registrationEnabled": false
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azureml.ms')]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2024-06-01",
+                      "name": "[format('{0}/{1}', 'privatelink.openai.azure.com', format('aiServicesOpenAI-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+                      "location": "global",
+                      "properties": {
+                        "virtualNetwork": {
+                          "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                        },
+                        "registrationEnabled": false
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.openai.azure.com')]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2020-06-01",
+                      "name": "[format('{0}/{1}', 'privatelink.api.azureml.ms', format('mlApi-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+                      "location": "global",
+                      "properties": {
+                        "registrationEnabled": false,
+                        "virtualNetwork": {
+                          "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                        }
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.api.azureml.ms')]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2020-06-01",
+                      "name": "[format('{0}/{1}', 'privatelink.notebooksazureml.net', format('mlNotebook-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+                      "location": "global",
+                      "properties": {
+                        "registrationEnabled": false,
+                        "virtualNetwork": {
+                          "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                        }
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.notebooksazureml.net')]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2024-06-01",
+                      "name": "[format('{0}/{1}', 'privatelink.search.windows.net', format('aiSearch-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+                      "location": "global",
+                      "properties": {
+                        "virtualNetwork": {
+                          "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                        },
+                        "registrationEnabled": false
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.search.windows.net')]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2024-06-01",
+                      "name": "[format('{0}/{1}', format('privatelink.blob.{0}', environment().suffixes.storage), format('storage-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+                      "location": "global",
+                      "properties": {
+                        "virtualNetwork": {
+                          "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                        },
+                        "registrationEnabled": false
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.search.windows.net')]",
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azureml.ms')]",
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.api.azureml.ms')]",
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.notebooksazureml.net')]",
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.openai.azure.com')]",
+                "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]"
+              ]
             }
           ]
         }
@@ -2630,7 +2867,7 @@
       ]
     },
     {
-      "condition": "[variables('useTwoVnetsSolution')]",
+      "condition": "[and(variables('useTwoVnetsSolution'), not(parameters('usePeering')))]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "[format('{0}-agents-{1}--private-endpoint', parameters('name'), parameters('uniqueSuffix'))]",
@@ -2641,6 +2878,9 @@
         },
         "mode": "Incremental",
         "parameters": {
+          "aiResourceGroupName": {
+            "value": "[parameters('resourceGroupName')]"
+          },
           "aiServicesName": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-{1}--dependencies', parameters('name'), parameters('uniqueSuffix'))), '2022-09-01').outputs.aiServicesName.value]"
           },
@@ -2673,6 +2913,9 @@
           },
           "createDnsZones": {
             "value": "[parameters('createDnsZones')]"
+          },
+          "createDnsZoneGroups": {
+            "value": "[parameters('createDnsZoneGroups')]"
           }
         },
         "template": {
@@ -2681,8 +2924,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.33.93.31351",
-              "templateHash": "15962559329896701293"
+              "version": "0.34.1.11899",
+              "templateHash": "2717263324290954196"
             }
           },
           "parameters": {
@@ -2747,7 +2990,18 @@
                 "description": "Name of the Customer Hub Workspace"
               }
             },
+            "aiResourceGroupName": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().name]",
+              "metadata": {
+                "description": "Name of the resource group for the AI dependent services"
+              }
+            },
             "createDnsZones": {
+              "type": "bool",
+              "defaultValue": true
+            },
+            "createDnsZoneGroups": {
               "type": "bool",
               "defaultValue": true
             }
@@ -2766,7 +3020,7 @@
                   {
                     "name": "[format('{0}-private-link-service-connection', parameters('aiServicesName'))]",
                     "properties": {
-                      "privateLinkServiceId": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiServicesName'))]",
+                      "privateLinkServiceId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('aiResourceGroupName')), 'Microsoft.CognitiveServices/accounts', parameters('aiServicesName'))]",
                       "groupIds": [
                         "account"
                       ]
@@ -2788,7 +3042,7 @@
                   {
                     "name": "[format('{0}-openAi-private-link-service-connection', parameters('aiServicesName'))]",
                     "properties": {
-                      "privateLinkServiceId": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('aiServicesName'))]",
+                      "privateLinkServiceId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('aiResourceGroupName')), 'Microsoft.CognitiveServices/accounts', parameters('aiServicesName'))]",
                       "groupIds": [
                         "account"
                       ]
@@ -2810,7 +3064,7 @@
                   {
                     "name": "[format('{0}-private-link-service-connection', parameters('aiSearchName'))]",
                     "properties": {
-                      "privateLinkServiceId": "[resourceId('Microsoft.Search/searchServices', parameters('aiSearchName'))]",
+                      "privateLinkServiceId": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('aiResourceGroupName')), 'Microsoft.Search/searchServices', parameters('aiSearchName'))]",
                       "groupIds": [
                         "searchService"
                       ]
@@ -2878,39 +3132,7 @@
               "location": "global"
             },
             {
-              "condition": "[parameters('createDnsZones')]",
-              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-              "apiVersion": "2024-06-01",
-              "name": "[format('{0}/{1}', 'privatelink.azureml.ms', format('aiServices-{0}-link', parameters('suffix')))]",
-              "location": "global",
-              "properties": {
-                "virtualNetwork": {
-                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
-                },
-                "registrationEnabled": false
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azureml.ms')]"
-              ]
-            },
-            {
-              "condition": "[parameters('createDnsZones')]",
-              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-              "apiVersion": "2024-06-01",
-              "name": "[format('{0}/{1}', 'privatelink.openai.azure.com', format('aiServicesOpenAI-{0}-link', parameters('suffix')))]",
-              "location": "global",
-              "properties": {
-                "virtualNetwork": {
-                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
-                },
-                "registrationEnabled": false
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.openai.azure.com')]"
-              ]
-            },
-            {
-              "condition": "[parameters('createDnsZones')]",
+              "condition": "[parameters('createDnsZoneGroups')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}/{1}', format('{0}-{1}-private-endpoint', parameters('aiServicesName'), parameters('suffix')), format('{0}-dns-group', parameters('aiServicesName')))]",
@@ -2925,13 +3147,12 @@
                 ]
               },
               "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', 'privatelink.azureml.ms', format('aiServices-{0}-link', parameters('suffix')))]",
                 "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azureml.ms')]",
                 "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-{1}-private-endpoint', parameters('aiServicesName'), parameters('suffix')))]"
               ]
             },
             {
-              "condition": "[parameters('createDnsZones')]",
+              "condition": "[parameters('createDnsZoneGroups')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}/{1}', format('{0}-{1}-openAi-private-endpoint', parameters('aiServicesName'), parameters('suffix')), format('{0}-openAi-dns-group', parameters('aiServicesName')))]",
@@ -2946,7 +3167,6 @@
                 ]
               },
               "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', 'privatelink.openai.azure.com', format('aiServicesOpenAI-{0}-link', parameters('suffix')))]",
                 "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-{1}-openAi-private-endpoint', parameters('aiServicesName'), parameters('suffix')))]",
                 "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.openai.azure.com')]"
               ]
@@ -2966,39 +3186,7 @@
               "location": "global"
             },
             {
-              "condition": "[parameters('createDnsZones')]",
-              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-              "apiVersion": "2020-06-01",
-              "name": "[format('{0}/{1}', 'privatelink.api.azureml.ms', format('mlApi-{0}-link', parameters('suffix')))]",
-              "location": "global",
-              "properties": {
-                "registrationEnabled": false,
-                "virtualNetwork": {
-                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
-                }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.api.azureml.ms')]"
-              ]
-            },
-            {
-              "condition": "[parameters('createDnsZones')]",
-              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-              "apiVersion": "2020-06-01",
-              "name": "[format('{0}/{1}', 'privatelink.notebooksazureml.net', format('mlNotebook-{0}-link', parameters('suffix')))]",
-              "location": "global",
-              "properties": {
-                "registrationEnabled": false,
-                "virtualNetwork": {
-                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
-                }
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.notebooksazureml.net')]"
-              ]
-            },
-            {
-              "condition": "[parameters('createDnsZones')]",
+              "condition": "[parameters('createDnsZoneGroups')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2023-11-01",
               "name": "[format('{0}/{1}', format('{0}-{1}-private-endpoint', parameters('hubWorkspaceName'), parameters('suffix')), format('{0}-mlApiNotebook-dns-group', parameters('hubWorkspaceName')))]",
@@ -3021,9 +3209,7 @@
               "dependsOn": [
                 "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-{1}-private-endpoint', parameters('hubWorkspaceName'), parameters('suffix')))]",
                 "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.api.azureml.ms')]",
-                "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', 'privatelink.api.azureml.ms', format('mlApi-{0}-link', parameters('suffix')))]",
-                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.notebooksazureml.net')]",
-                "[resourceId('Microsoft.Network/privateDnsZones/virtualNetworkLinks', 'privatelink.notebooksazureml.net', format('mlNotebook-{0}-link', parameters('suffix')))]"
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.notebooksazureml.net')]"
               ]
             },
             {
@@ -3034,23 +3220,7 @@
               "location": "global"
             },
             {
-              "condition": "[parameters('createDnsZones')]",
-              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-              "apiVersion": "2024-06-01",
-              "name": "[format('{0}/{1}', 'privatelink.search.windows.net', format('aiSearch-{0}-link', parameters('suffix')))]",
-              "location": "global",
-              "properties": {
-                "virtualNetwork": {
-                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
-                },
-                "registrationEnabled": false
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.search.windows.net')]"
-              ]
-            },
-            {
-              "condition": "[parameters('createDnsZones')]",
+              "condition": "[parameters('createDnsZoneGroups')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}/{1}', format('{0}-{1}-private-endpoint', parameters('aiSearchName'), parameters('suffix')), format('{0}-dns-group', parameters('aiSearchName')))]",
@@ -3077,23 +3247,7 @@
               "location": "global"
             },
             {
-              "condition": "[parameters('createDnsZones')]",
-              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-              "apiVersion": "2024-06-01",
-              "name": "[format('{0}/{1}', format('privatelink.blob.{0}', environment().suffixes.storage), format('storage-{0}-link', parameters('suffix')))]",
-              "location": "global",
-              "properties": {
-                "virtualNetwork": {
-                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
-                },
-                "registrationEnabled": false
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]"
-              ]
-            },
-            {
-              "condition": "[parameters('createDnsZones')]",
+              "condition": "[parameters('createDnsZoneGroups')]",
               "type": "Microsoft.Network/privateEndpoints/privateDnsZoneGroups",
               "apiVersion": "2024-05-01",
               "name": "[format('{0}/{1}', format('{0}-{1}-private-endpoint', parameters('storageName'), parameters('suffix')), format('{0}-dns-group', parameters('storageName')))]",
@@ -3111,6 +3265,198 @@
                 "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]",
                 "[resourceId('Microsoft.Network/privateEndpoints', format('{0}-{1}-private-endpoint', parameters('storageName'), parameters('suffix')))]"
               ]
+            },
+            {
+              "condition": "[parameters('createDnsZones')]",
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2022-09-01",
+              "name": "[format('dns-zone-links-for-{0}', parameters('vnetName'))]",
+              "resourceGroup": "[parameters('vnetResourceGroupName')]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "vnetName": {
+                    "value": "[parameters('vnetName')]"
+                  },
+                  "vnetResourceGroupName": {
+                    "value": "[parameters('vnetResourceGroupName')]"
+                  },
+                  "suffix": {
+                    "value": "[parameters('suffix')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.34.1.11899",
+                      "templateHash": "16953869379116855263"
+                    }
+                  },
+                  "parameters": {
+                    "vnetName": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Name of the Vnet"
+                      }
+                    },
+                    "vnetResourceGroupName": {
+                      "type": "string",
+                      "defaultValue": "[resourceGroup().name]",
+                      "metadata": {
+                        "description": "Name of the Vner Resource Group"
+                      }
+                    },
+                    "suffix": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Suffix for unique resource names"
+                      }
+                    }
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Network/privateDnsZones",
+                      "apiVersion": "2020-06-01",
+                      "name": "privatelink.azureml.ms",
+                      "location": "global"
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones",
+                      "apiVersion": "2020-06-01",
+                      "name": "privatelink.openai.azure.com",
+                      "location": "global"
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones",
+                      "apiVersion": "2020-06-01",
+                      "name": "privatelink.api.azureml.ms",
+                      "location": "global"
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones",
+                      "apiVersion": "2020-06-01",
+                      "name": "privatelink.notebooksazureml.net",
+                      "location": "global"
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones",
+                      "apiVersion": "2020-06-01",
+                      "name": "privatelink.search.windows.net",
+                      "location": "global"
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones",
+                      "apiVersion": "2020-06-01",
+                      "name": "[format('privatelink.blob.{0}', environment().suffixes.storage)]",
+                      "location": "global"
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2024-06-01",
+                      "name": "[format('{0}/{1}', 'privatelink.azureml.ms', format('aiServices-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+                      "location": "global",
+                      "properties": {
+                        "virtualNetwork": {
+                          "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                        },
+                        "registrationEnabled": false
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azureml.ms')]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2024-06-01",
+                      "name": "[format('{0}/{1}', 'privatelink.openai.azure.com', format('aiServicesOpenAI-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+                      "location": "global",
+                      "properties": {
+                        "virtualNetwork": {
+                          "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                        },
+                        "registrationEnabled": false
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.openai.azure.com')]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2020-06-01",
+                      "name": "[format('{0}/{1}', 'privatelink.api.azureml.ms', format('mlApi-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+                      "location": "global",
+                      "properties": {
+                        "registrationEnabled": false,
+                        "virtualNetwork": {
+                          "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                        }
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.api.azureml.ms')]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2020-06-01",
+                      "name": "[format('{0}/{1}', 'privatelink.notebooksazureml.net', format('mlNotebook-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+                      "location": "global",
+                      "properties": {
+                        "registrationEnabled": false,
+                        "virtualNetwork": {
+                          "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                        }
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.notebooksazureml.net')]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2024-06-01",
+                      "name": "[format('{0}/{1}', 'privatelink.search.windows.net', format('aiSearch-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+                      "location": "global",
+                      "properties": {
+                        "virtualNetwork": {
+                          "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                        },
+                        "registrationEnabled": false
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.search.windows.net')]"
+                      ]
+                    },
+                    {
+                      "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+                      "apiVersion": "2024-06-01",
+                      "name": "[format('{0}/{1}', format('privatelink.blob.{0}', environment().suffixes.storage), format('storage-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+                      "location": "global",
+                      "properties": {
+                        "virtualNetwork": {
+                          "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                        },
+                        "registrationEnabled": false
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.search.windows.net')]",
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azureml.ms')]",
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.api.azureml.ms')]",
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.notebooksazureml.net')]",
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.openai.azure.com')]",
+                "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]"
+              ]
             }
           ]
         }
@@ -3118,6 +3464,195 @@
       "dependsOn": [
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-{1}--dependencies', parameters('name'), parameters('uniqueSuffix')))]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-{1}--hub', parameters('name'), parameters('uniqueSuffix')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-{1}--private-endpoint', parameters('name'), parameters('uniqueSuffix')))]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
+        "[subscriptionResourceId('Microsoft.Resources/deployments', format('{0}-{1}--vnets', parameters('name'), parameters('uniqueSuffix')))]"
+      ]
+    },
+    {
+      "condition": "[and(and(variables('useTwoVnetsSolution'), parameters('usePeering')), parameters('createDnsZones'))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('dns-zone-links-for-{0}', parameters('agentsVnetName'))]",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "vnetName": {
+            "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('{0}-{1}--vnets', parameters('name'), parameters('uniqueSuffix'))), '2022-09-01').outputs.agentsVirtualNetworkName.value]"
+          },
+          "vnetResourceGroupName": {
+            "value": "[reference(subscriptionResourceId('Microsoft.Resources/deployments', format('{0}-{1}--vnets', parameters('name'), parameters('uniqueSuffix'))), '2022-09-01').outputs.agentsVirtualNetworkResourceGroupName.value]"
+          },
+          "suffix": {
+            "value": "[parameters('uniqueSuffix')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.34.1.11899",
+              "templateHash": "16953869379116855263"
+            }
+          },
+          "parameters": {
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Vnet"
+              }
+            },
+            "vnetResourceGroupName": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().name]",
+              "metadata": {
+                "description": "Name of the Vner Resource Group"
+              }
+            },
+            "suffix": {
+              "type": "string",
+              "metadata": {
+                "description": "Suffix for unique resource names"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "privatelink.azureml.ms",
+              "location": "global"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "privatelink.openai.azure.com",
+              "location": "global"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "privatelink.api.azureml.ms",
+              "location": "global"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "privatelink.notebooksazureml.net",
+              "location": "global"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "privatelink.search.windows.net",
+              "location": "global"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "[format('privatelink.blob.{0}', environment().suffixes.storage)]",
+              "location": "global"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2024-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.azureml.ms', format('aiServices-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+              "location": "global",
+              "properties": {
+                "virtualNetwork": {
+                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                },
+                "registrationEnabled": false
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.azureml.ms')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2024-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.openai.azure.com', format('aiServicesOpenAI-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+              "location": "global",
+              "properties": {
+                "virtualNetwork": {
+                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                },
+                "registrationEnabled": false
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.openai.azure.com')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.api.azureml.ms', format('mlApi-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+              "location": "global",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.api.azureml.ms')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.notebooksazureml.net', format('mlNotebook-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+              "location": "global",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.notebooksazureml.net')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2024-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.search.windows.net', format('aiSearch-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+              "location": "global",
+              "properties": {
+                "virtualNetwork": {
+                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                },
+                "registrationEnabled": false
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.search.windows.net')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2024-06-01",
+              "name": "[format('{0}/{1}', format('privatelink.blob.{0}', environment().suffixes.storage), format('storage-{0}-link-to-{1}', parameters('suffix'), parameters('vnetName')))]",
+              "location": "global",
+              "properties": {
+                "virtualNetwork": {
+                  "id": "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('vnetResourceGroupName')), 'Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+                },
+                "registrationEnabled": false
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]"
+              ]
+            }
+          ]
+        }
+      },
+      "dependsOn": [
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-{1}--private-endpoint', parameters('name'), parameters('uniqueSuffix')))]",
         "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]",
         "[subscriptionResourceId('Microsoft.Resources/deployments', format('{0}-{1}--vnets', parameters('name'), parameters('uniqueSuffix')))]"
@@ -3165,8 +3700,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.33.93.31351",
-              "templateHash": "10773126362060108423"
+              "version": "0.34.1.11899",
+              "templateHash": "8198774947689244297"
             }
           },
           "parameters": {
@@ -3273,6 +3808,7 @@
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-{1}--hub', parameters('name'), parameters('uniqueSuffix')))]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-{1}--identity', parameters('name'), parameters('uniqueSuffix')))]",
         "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-{1}--private-endpoint', parameters('name'), parameters('uniqueSuffix')))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('agentNetworkingResourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-agents-{1}--private-endpoint', parameters('name'), parameters('uniqueSuffix')))]",
         "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('resourceGroupName'))]"
       ]
     },
@@ -3303,8 +3839,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.33.93.31351",
-              "templateHash": "12976852655018469345"
+              "version": "0.34.1.11899",
+              "templateHash": "13530915698379584933"
             }
           },
           "parameters": {
@@ -3360,6 +3896,16 @@
                 "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908')]",
                 "principalType": "ServicePrincipal"
               }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(subscription().subscriptionId, resourceGroup().id, resourceId('Microsoft.Authorization/roleDefinitions', 'b78c5d69-af96-48a3-bf8d-a8b4d589de94'), parameters('aiProjectId'))]",
+              "properties": {
+                "principalId": "[parameters('aiProjectPrincipalId')]",
+                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', 'b78c5d69-af96-48a3-bf8d-a8b4d589de94')]",
+                "principalType": "ServicePrincipal"
+              }
             }
           ]
         }
@@ -3398,8 +3944,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.33.93.31351",
-              "templateHash": "16079856828729639404"
+              "version": "0.34.1.11899",
+              "templateHash": "2548564555086004110"
             }
           },
           "parameters": {
@@ -3467,7 +4013,7 @@
         "mode": "Incremental",
         "parameters": {
           "capabilityHostName": {
-            "value": "[format('{0}-{1}', parameters('uniqueSuffix'), parameters('defaultCapabilityHostName'))]"
+            "value": "[parameters('defaultCapabilityHostName')]"
           },
           "aiHubName": {
             "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('resourceGroupName')), 'Microsoft.Resources/deployments', format('{0}-{1}--hub', parameters('name'), parameters('uniqueSuffix'))), '2022-09-01').outputs.aiHubName.value]"
@@ -3491,8 +4037,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.33.93.31351",
-              "templateHash": "6620421783569115101"
+              "version": "0.34.1.11899",
+              "templateHash": "875392338155270286"
             }
           },
           "parameters": {
@@ -3549,13 +4095,13 @@
             {
               "type": "Microsoft.MachineLearningServices/workspaces/capabilityHosts",
               "apiVersion": "2024-10-01-preview",
-              "name": "[format('{0}/{1}', parameters('aiHubName'), format('{0}-{1}', parameters('aiHubName'), parameters('capabilityHostName')))]",
+              "name": "[format('{0}/{1}', parameters('aiHubName'), parameters('capabilityHostName'))]",
               "properties": "[if(empty(parameters('customerSubnetId')), createObject('capabilityHostKind', 'Agents'), createObject('capabilityHostKind', 'Agents', 'customerSubnet', parameters('customerSubnetId')))]"
             },
             {
               "type": "Microsoft.MachineLearningServices/workspaces/capabilityHosts",
               "apiVersion": "2024-10-01-preview",
-              "name": "[format('{0}/{1}', parameters('aiProjectName'), format('{0}-{1}', parameters('aiProjectName'), parameters('capabilityHostName')))]",
+              "name": "[format('{0}/{1}', parameters('aiProjectName'), parameters('capabilityHostName'))]",
               "properties": {
                 "capabilityHostKind": "Agents",
                 "aiServicesConnections": "[variables('aiServiceConnections')]",
@@ -3563,7 +4109,7 @@
                 "storageConnections": "[variables('storageConnections')]"
               },
               "dependsOn": [
-                "[resourceId('Microsoft.MachineLearningServices/workspaces/capabilityHosts', parameters('aiHubName'), format('{0}-{1}', parameters('aiHubName'), parameters('capabilityHostName')))]"
+                "[resourceId('Microsoft.MachineLearningServices/workspaces/capabilityHosts', parameters('aiHubName'), parameters('capabilityHostName'))]"
               ]
             }
           ]

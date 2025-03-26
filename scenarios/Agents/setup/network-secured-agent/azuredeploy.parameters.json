@@ -83,7 +83,13 @@
     "existingAgentsVirtualNetworkResourceGroup": {
       "value": ""
     },
+    "usePeering": {
+      "value": true
+    },
     "createDnsZones": {
+      "value": true
+    },
+    "createDnsZoneGroups": {
       "value": true
     }
   }
